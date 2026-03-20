@@ -854,13 +854,13 @@ The interface then looks like this.
 ```c
 void *CCC_flat_priority_queue_push(
     CCC_Flat_priority_queue *flat_priority_queue,
-    void const *e,
+    void const *element,
     void *temp,
     CCC_Allocator const *allocator
 );
 ```
 
-The element `e` here is just a generic reference to whatever type the user stores in the container and `temp` is a swap slot provided by the user.
+The element `element` here is just a generic reference to whatever type the user stores in the container and `temp` is a swap slot provided by the user.
 
 ### Allocator Passing
 
@@ -875,7 +875,7 @@ typedef struct {
 } CCC_Allocator;
 ```
 
-The CCC_Allocator_interface function type implements a unified interface for allocation, reallocation, and deallocation. See `types.h` for the full contract. A standard library backed allocator might look like this:
+The `CCC_Allocator_interface` function type implements a unified interface for allocation, reallocation, and deallocation. See `types.h` for the full contract. A standard library backed allocator might look like this:
 
 ```c
 void *
@@ -907,7 +907,7 @@ CCC_flat_priority_queue_push(
     &pq,
     &(int){2},
     &(int){},
-    &(CCC_Allocator){.allocate = arena_alloc, .context = &arena}
+    &(CCC_Allocator){.allocate = arena_allocate, .context = &arena}
 );
 ```
 
@@ -919,11 +919,11 @@ To explicitly prevent allocation pass an empty allocator.
 CCC_flat_priority_queue_push(&pq, &(int){1}, &(int){}, &(CCC_Allocator){});
 ```
 
-An empty `CCC_Allocator` has NULL internal fields. The container checks for this and returns an appropriate error rather than attempting allocation. Never pass `NULL` to any function in the C Container Collection.
+An empty `CCC_Allocator` has `NULL` internal fields. The container checks for this and returns an appropriate error rather than attempting allocation. Never pass `NULL` to any function in the C Container Collection.
 
 Passing allocators makes auditing CCC code easy.
 
-> ![!IMPORTANT]
+> [!IMPORTANT]
 > A non-empty allocator allocator argument signals allocation may occur.
 > An empty allocator argument signals allocation is forbidden.
 > A `NULL` argument at any C Container Collection function call site is always a programmer error.

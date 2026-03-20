@@ -980,7 +980,7 @@ static CCC_Bitset bitset
     );
 ```
 
-All of these containers can also be initialized in preparation for dynamic allocation at compile time if an allocation function is provided (see [allocation](#allocation) for more on `std_alloc`). Here is the flat hash map as an example.
+Because the above containers are of fixed size, the empty `&(CCC_Allocator){}` will be passed to any functions requesting an allocator. If containers are going to grow dynamically at runtime, they can still be initialized at compile time.
 
 ```c
 static CCC_Flat_hash_map hash_map = CCC_flat_hash_map_default(
@@ -989,6 +989,8 @@ static CCC_Flat_hash_map hash_map = CCC_flat_hash_map_default(
     ((CCC_Hasher){.hash = hash_int, .compare = compare_int_key})
 );
 ```
+
+Then, a non empty `&std_allocator` or `&(CCC_Allocator){.allocate = arena_allocate, .context = &arena}` will be passed to functions that accept an allocator.
 
 ### Metadata is Trivially Copyable
 

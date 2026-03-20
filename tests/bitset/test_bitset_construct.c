@@ -11,6 +11,21 @@ typedef typeof(*(CCC_Bitset){}.blocks) Bitblocks;
 #define to_blocks(bit_count)                                                   \
     (((bit_count) + CCC_BITSET_BLOCK_BITS - 1) / CCC_BITSET_BLOCK_BITS)
 
+static CCC_Bitset static_bitset = CCC_bitset_with_storage(32, (CCC_Bit[32]){});
+
+check_static_begin(bitset_test_static) {
+    check(CCC_bitset_popcount(&static_bitset).count, 0);
+    check(CCC_bitset_capacity(&static_bitset).count >= 32, CCC_TRUE);
+    size_t i = 0;
+    while (i < CCC_bitset_capacity(&static_bitset).count) {
+        check(CCC_bitset_test(&static_bitset, i), CCC_FALSE);
+        check(CCC_bitset_test(&static_bitset, i), CCC_FALSE);
+        ++i;
+    }
+    check(i >= 32, CCC_TRUE);
+    check_end();
+}
+
 check_static_begin(bitset_test_construct) {
     CCC_Bitset bs
         = CCC_bitset_for(10, 10, CCC_bitset_storage_for((CCC_Bit[10]){}));
@@ -214,6 +229,7 @@ check_static_begin(bitset_test_init_with_capacity_fail) {
 int
 main(void) {
     return check_run(
+        bitset_test_static(),
         bitset_test_construct(),
         bitset_test_construct_with_literal(),
         bitset_test_copy_no_allocate(),

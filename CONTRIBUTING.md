@@ -328,16 +328,18 @@ This library will never be as optimized as a C template-like library that genera
 We can still try to offer the user some performance benefits on key code paths via our container specialized macros. All macros that accept compound literal user types write the user specified data directly memory via casting instead of calling a generic copy function. The pseudo code for such an operation is roughly as follows.
 
 ```c
-#define map_insert_or_assign_macro(container_pointer, key,                     \
+#define map_insert_or_assign_macro(container_pointer, key, allocator,          \
                                    compound_literal...)                        \
     (__extension__({                                                           \
+        CCC_Allocator const *const map_allocator = &(allocator);               \
         struct Entry entry = container_find_slot(container_pointer, key);      \
         if (entry.status & OCCUPIED) {                                         \
             *((typeof(compound_literal) *)container_slot_at(&entry))           \
                 = compound_literal;                                            \
         } else {                                                               \
-            *((typeof(compound_literal) *)container_prepare_new_slot(&entry))  \
-                = compound_literal;                                            \
+            *((typeof(compound_literal) *)container_new_slot(                  \
+                &entry, map_allocator                                          \
+            )) = compound_literal;                                             \
         }                                                                      \
         entry;                                                                 \
     }))

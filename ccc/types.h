@@ -91,7 +91,9 @@ when the underlying array is resized; a handle remains valid because it is an
 index not a pointer. */
 typedef size_t CCC_Handle_index;
 
-/** @brief The result of a range query on iterable containers.
+/** @brief The result of a range query on iterable containers. Handles are
+stable indices into an array until removed, regardless of other insertions,
+removals, or array resizing.
 
 A range provides a view all elements that fit the equals range criteria
 of search-by-key containers. Use the provided range iteration functions in
@@ -104,7 +106,9 @@ typedef struct {
     CCC_Handle_index end;
 } CCC_Handle_range;
 
-/** @brief The result of a range_reverse query on iterable containers.
+/** @brief The result of a range_reverse query on iterable containers. Handles
+are stable indices into an array until removed, regardless of other insertions,
+removals, or array resizing.
 
 A range_reverse provides a view all elements that fit the equals range_reverse
 criteria of search-by-key containers. Use the provided range iteration functions
@@ -266,27 +270,38 @@ typedef struct {
 
 /** @brief A reference to a user type within the container.
 
-This is to help users define callback functions that act on each node in a
-container. For example, a destruct function will use this type. */
+Arguments are accepted by functions that allow the user to modify a type stored
+in a container. See the priority queue containers and their update, increase,
+and decrease capabilities as an example.
+
+The pointers are const to bind the user type closely with its context, if
+context is provided. Because container code is providing the user a reference to
+a user type it currently stores, it is critical the user does not accidentally
+move or misuse the pointer to jeopardize container invariants. */
 typedef struct {
     /** The user type being stored in the container. */
-    void *type;
+    void *const type;
     /** A reference to context for this action on a type.. */
-    void *context;
+    void *const context;
 } CCC_Arguments;
 
 /** @brief A bundle of arguments to pass to the user-implemented
 Allocator_interface function interface. This ensures clarity in inputs and
 expected outputs to an allocator function the user wishes to use for managing
 containers. Additional context can be provided for more complex allocation
-schemes. */
+schemes.
+
+The pointers are const to bind the input closely with its context, if context is
+provided. Because container code is providing the user a reference to a user
+type it currently stores, or data it manages, it is critical the user does not
+accidentally move or misuse the pointer to jeopardize container invariants. */
 typedef struct {
     /** The input to the allocation function. NULL or previously allocated. */
-    void *input;
+    void *const input;
     /** The bytes being requested from the allocator. 0 is a free request. */
     size_t bytes;
     /** Additional state to pass to the allocator to help manage memory. */
-    void *context;
+    void *const context;
 } CCC_Allocator_arguments;
 
 /** @brief An allocation function at the core of all containers.
@@ -298,37 +313,33 @@ initialization and the programmer may choose how to best utilize this reference
 
 - If input is NULL and bytes 0, NULL is returned.
 - If input is NULL with non-zero bytes, new memory is allocated/returned.
-- If input is non-NULL it has been previously allocated by the
-Allocator_interface.
+- If input is non-NULL it has been previously allocated by the allocator.
 - If input is non-NULL with non-zero size, input is resized to at least bytes
   size. The pointer returned is NULL if resizing fails. Upon success, the
   pointer returned might not be equal to the pointer provided.
 - If input is non-NULL and size is 0, input is freed and NULL is returned.
 
-One may be tempted to use realloc to check all of these boxes but realloc is
-implementation defined on some of these points. So, the context parameter also
-discourages users from providing realloc. For example, one solution using the
-standard library allocator might be implemented as follows (context is not
-needed):
+For example, one solution using the standard library allocator might be
+implemented as follows (context is not needed):
 
 ```
 void *
-std_allocate(CCC_Allocator_arguments const context)
+std_allocate(CCC_Allocator_arguments const arguments)
 {
-    if (!context.input && !context.bytes)
+    if (!arguments.input && !arguments.bytes)
     {
         return NULL;
     }
-    if (!context.input)
+    if (!arguments.input)
     {
-        return malloc(context.bytes);
+        return malloc(arguments.bytes);
     }
-    if (!context.bytes)
+    if (!arguments.bytes)
     {
-        free(context.input);
+        free(arguments.input);
         return NULL;
     }
-    return realloc(context.input, context.bytes);
+    return realloc(arguments.input, arguments.bytes);
 }
 ```
 
@@ -350,7 +361,7 @@ There are a few ways to pass this type when a container function requests a
 reference to it. First initialize it statically in a module.
 
 ```
-static CCC_Allocator std_allocator = { .allocate = std_allocate };
+static CCC_Allocator const std_allocator = { .allocate = std_allocate };
 int
 main(void) {
     container_insert(&container, &(int){1}, &std_allocator);
@@ -396,14 +407,19 @@ container takes a standard element comparison function, and helps avoid
 swappable argument errors. Any type LHS is considered the left hand side and
 any type RHS is the right hand side when considering three-way comparison
 return values. Context data is a reference to any context data provided upon
-container initialization. */
+container initialization.
+
+The pointers are const to bind the types closely with their context, if context
+is provided. Because container code is providing the user reference to the types
+it currently stores it is critical the user does not accidentally move or misuse
+the pointer to jeopardize container invariants. */
 typedef struct {
     /** The left hand side for a three-way comparison operation. */
     void const *const type_left;
     /** The right hand side for a three-way comparison operation. */
     void const *const type_right;
     /** A reference to context data provided to container on initialization. */
-    void *context;
+    void *const context;
 } CCC_Comparator_arguments;
 
 /** @brief A callback function for comparing two elements in a container.
@@ -416,7 +432,7 @@ typedef CCC_Order CCC_Comparator_interface(CCC_Comparator_arguments);
 
 /** @brief The type passed by reference to any container function that may need
 to compare elements.  The context pointer is passed as the context argument of
-the `CCC_Arguments` type, when provided. */
+the `CCC_Comparator_arguments` type, when provided. */
 typedef struct {
     /** The comparison function to be passed to comparing operation. */
     CCC_Comparator_interface *compare;
@@ -438,9 +454,9 @@ typedef void CCC_Modifier_interface(CCC_Arguments);
 to modify elements.  The context pointer is passed as the context argument of
 the `CCC_Arguments` type, when provided. */
 typedef struct {
-    /** The comparison function to be passed to comparing operation. */
+    /** The modifier function to be passed to operation. */
     CCC_Modifier_interface *modify;
-    /** Additional state to pass to the comparison. */
+    /** Additional state to pass to the modification. */
     void *context;
 } CCC_Modifier;
 
@@ -488,14 +504,19 @@ return (*key_left > type_right->key) - (*key_left < type_right->key);
 Notice that the user type must access its key field of its struct. Comparison
 must happen this way to support searching by key in associative containers
 rather than by entire user struct. Only needing to provide a key can save
-significant memory for a search depending on the size of the user type. */
+significant memory for a search depending on the size of the user type.
+
+The pointers are const to bind the key and type closely with their context, if
+context is provided. Because container code is providing the user reference to
+the key and type type it currently stores, it is critical the user does not
+accidentally move or misuse the pointer to jeopardize container invariants. */
 typedef struct {
     /** Key matching the key field of the provided type to the container. */
     void const *const key_left;
     /** The complete user type stored in the container. */
     void const *const type_right;
     /** A reference to context for this key comparison. */
-    void *context;
+    void *const context;
 } CCC_Key_comparator_arguments;
 
 /** @brief A callback function for three-way comparing two stored keys.
@@ -519,12 +540,18 @@ typedef struct {
 for hash containers.
 
 A reference to any context data is also provided. This the struct one can use
-to hash their values with their hash function. */
+to hash their values with their hash function.
+
+The pointers are const to bind the key closely with its context, if context is
+provided. This discourages the user from accidentally swapping one field without
+changing the other. It also encourages users to opt for inline compound literal
+construction passing or accurate variable naming when creating callback
+arguments for better code readability. */
 typedef struct {
     /** A reference to the same type used for keys in the container. */
     void const *const key;
     /** A reference to context for this action on a key. */
-    void *context;
+    void *const context;
 } CCC_Key_arguments;
 
 /** @brief A callback function to hash the key type used in a container.

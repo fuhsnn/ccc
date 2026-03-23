@@ -485,7 +485,8 @@ static Order
 order_words(Comparator_arguments const c) {
     Word const *const left = c.type_left;
     Word const *const right = c.type_right;
-    Order freq_order = (left->freq > right->freq) - (left->freq < right->freq);
+    Order const freq_order
+        = (left->freq > right->freq) - (left->freq < right->freq);
     if (freq_order != CCC_ORDER_EQUAL) {
         return freq_order;
     }

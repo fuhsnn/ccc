@@ -394,6 +394,9 @@ create_frequency_map(
     CCC_Allocator const *const allocator
 ) {
     char *linepointer = NULL;
+    defer {
+        free(linepointer);
+    }
     size_t len = 0;
     ptrdiff_t read = 0;
     Array_adaptive_map array_adaptive_map = array_adaptive_map_default(
@@ -411,21 +414,21 @@ create_frequency_map(
              word_view = SV_token_next(line, word_view, space)) {
             struct String_offset const cw
                 = clean_word(arena, word_view, allocator);
-            if (!cw.error) {
-                Array_adaptive_map_handle const *e
-                    = array_adaptive_map_handle_wrap(&array_adaptive_map, &cw);
-                e = array_adaptive_map_and_modify_with(e, Word * w, w->freq++;);
-                Word const *const w = array_adaptive_map_at(
-                    &array_adaptive_map,
-                    array_adaptive_map_or_insert_with(
-                        e, allocator, (Word){.ofs = cw, .freq = 1}
-                    )
-                );
-                check(w);
+            if (cw.error) {
+                continue;
             }
+            CCC_Handle_index const i = array_adaptive_map_or_insert_with(
+                array_adaptive_map_and_modify_with(
+                    array_adaptive_map_handle_wrap(&array_adaptive_map, &cw),
+                    Word * e,
+                    { e->freq++; }
+                ),
+                allocator,
+                (Word){.ofs = cw, .freq = 1}
+            );
+            check(i);
         }
     }
-    free(linepointer);
     return array_adaptive_map;
 }
 

@@ -190,7 +190,7 @@ static uint64_t hash_char(CCC_Key_arguments);
 static CCC_Order char_order(CCC_Key_comparator_arguments);
 static CCC_Order order_freqs(CCC_Comparator_arguments);
 static CCC_Order path_memo_order(CCC_Key_comparator_arguments);
-static struct Path_memo append_path_to_bit_queue(
+static struct Path_memo append_tree_path_to_bitq(
     struct Huffman_tree *, struct Bit_queue *, char, CCC_Allocator const *
 );
 static struct Bit_queue
@@ -511,26 +511,31 @@ build_encoding_bitq(
            element and re-record the path in the path bit queue or we insert a
            newly formed path and remember where it starts and ends in the bit
            queue. They _with variants offer lazy evaluation of the final
-           argument only on Vacant entries. This means the expensive function
-           call only executes if the entry is Vacant which is critical because
-           appending to the bit queue is a side effect. */
-        CCC_Entry const *const entry = flat_hash_map_try_insert_with(
-            &path_memos,
-            *c,
-            allocator,
-            append_path_to_bit_queue(tree, &character_paths, *c, allocator)
+           argument. For the and_modify_with step we only execute if the entry
+           is occupied. For the or_insert_with step we only execute if the entry
+           is vacant. This means that logic or expensive function calls execute
+           conditionally. For or_insert_with this is important because appending
+           the bit queue is a side-effect. */
+        struct Path_memo const *const p = flat_hash_map_or_insert_with(
+            flat_hash_map_and_modify_with(
+                flat_hash_map_entry_wrap(&path_memos, c, allocator),
+                struct Path_memo const *const seen_path,
+                {
+                    size_t const end
+                        = seen_path->bitq_start_index + seen_path->path_len;
+                    for (size_t i = seen_path->bitq_start_index; i < end; ++i) {
+                        CCC_Result const pushed = bitq_push_back(
+                            &character_paths,
+                            bitq_test(&character_paths, i),
+                            allocator
+                        );
+                        check(pushed == CCC_RESULT_OK);
+                    }
+                }
+            ),
+            append_tree_path_to_bitq(tree, &character_paths, *c, allocator)
         );
-        check(!insert_error(entry));
-        if (occupied(entry)) {
-            struct Path_memo const *const seen_path = unwrap(entry);
-            size_t const end
-                = seen_path->bitq_start_index + seen_path->path_len;
-            for (size_t i = seen_path->bitq_start_index; i < end; ++i) {
-                CCC_Tribool const bit = bitq_test(&character_paths, i);
-                check(bit != CCC_TRIBOOL_ERROR);
-                bitq_push_back(&character_paths, bit, allocator);
-            }
-        }
+        check(p);
     });
     return character_paths;
 }
@@ -542,7 +547,7 @@ to their original state before returning. The path memo representing this new
 path's start position and length in the bit queue is returned. Assumes the
 character can be found, otherwise exits the program. */
 static struct Path_memo
-append_path_to_bit_queue(
+append_tree_path_to_bitq(
     struct Huffman_tree *const tree,
     struct Bit_queue *const bq,
     char const c,

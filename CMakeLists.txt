@@ -110,9 +110,11 @@ exec \"${LLVM_COV_EXECUTABLE}\" gcov \"$@\"
                      --capture
                      --directory ${CMAKE_BINARY_DIR}
                      --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info
+                     --rc lcov_ignore_errors=1
 
         COMMAND lcov --extract ${CMAKE_SOURCE_DIR}/docs/coverage.info '*/source/*'
                      --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info
+                     --rc lcov_ignore_errors=1
 
         COMMAND lcov --remove ${CMAKE_SOURCE_DIR}/docs/coverage.info
                  'tests/*' 
@@ -123,6 +125,7 @@ exec \"${LLVM_COV_EXECUTABLE}\" gcov \"$@\"
                  'build/*' 
                  '*/_deps/*'
                  -o ${CMAKE_SOURCE_DIR}/docs/coverage.info
+                 --rc lcov_ignore_errors=1
 
         COMMAND genhtml ${CMAKE_SOURCE_DIR}/docs/coverage.info
                         --output-directory ${CMAKE_SOURCE_DIR}/docs/coverage

@@ -74,3 +74,8 @@ save
 CMakeUserPresets.json
 Makefile.user
 install/
+
+# GCOV output
+*.gcov
+*.info
+coverage-html/

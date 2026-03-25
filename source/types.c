@@ -54,7 +54,7 @@ CCC_entry_insert_error(CCC_Entry const *const entry) {
 }
 
 CCC_Tribool
-CCC_entry_input_error(CCC_Entry const *const entry) {
+CCC_entry_argument_error(CCC_Entry const *const entry) {
     if (!entry) {
         return CCC_TRIBOOL_ERROR;
     }
@@ -63,10 +63,11 @@ CCC_entry_input_error(CCC_Entry const *const entry) {
 
 void *
 CCC_entry_unwrap(CCC_Entry const *const entry) {
-    if (!entry) {
+    if (!entry || (entry->status & CCC_ENTRY_NO_UNWRAP)
+        || (entry->status & CCC_ENTRY_INSERT_ERROR)) {
         return NULL;
     }
-    return entry->status & CCC_ENTRY_NO_UNWRAP ? NULL : entry->type;
+    return entry->type;
 }
 
 CCC_Tribool
@@ -86,7 +87,7 @@ CCC_handle_insert_error(CCC_Handle const *const handle) {
 }
 
 CCC_Tribool
-CCC_handle_input_error(CCC_Handle const *const handle) {
+CCC_handle_argument_error(CCC_Handle const *const handle) {
     if (!handle) {
         return CCC_TRIBOOL_ERROR;
     }
@@ -122,22 +123,22 @@ CCC_range_reverse_end(CCC_Range_reverse const *const range) {
 }
 
 CCC_Handle_index
-CCC_array_range_begin(CCC_Handle_range const *const range) {
+CCC_handle_range_begin(CCC_Handle_range const *const range) {
     return range ? range->begin : 0;
 }
 
 CCC_Handle_index
-CCC_array_range_end(CCC_Handle_range const *const range) {
+CCC_handle_range_end(CCC_Handle_range const *const range) {
     return range ? range->end : 0;
 }
 
 CCC_Handle_index
-CCC_array_range_reverse_begin(CCC_Handle_range_reverse const *const range) {
+CCC_handle_range_reverse_begin(CCC_Handle_range_reverse const *const range) {
     return range ? range->reverse_begin : 0;
 }
 
 CCC_Handle_index
-CCC_array_range_reverse_end(CCC_Handle_range_reverse const *const range) {
+CCC_handle_range_reverse_end(CCC_Handle_range_reverse const *const range) {
     return range ? range->reverse_end : 0;
 }
 
@@ -150,7 +151,7 @@ CCC_result_message(CCC_Result const result) {
 }
 
 CCC_Entry_status
-CCC_get_entry_status(CCC_Entry const *entry) {
+CCC_entry_status(CCC_Entry const *entry) {
     if (!entry) {
         return CCC_ENTRY_ARGUMENT_ERROR;
     }
@@ -158,7 +159,7 @@ CCC_get_entry_status(CCC_Entry const *entry) {
 }
 
 CCC_Handle_status
-CCC_get_handle_status(CCC_Handle const *handle) {
+CCC_handle_status(CCC_Handle const *handle) {
     if (!handle) {
         return CCC_ENTRY_ARGUMENT_ERROR;
     }

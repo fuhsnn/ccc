@@ -29,6 +29,23 @@ Required tools:
 - .clang-format - This is needed less so now that `pre-commit` helps with formatting.
 - .clang-tidy - Clang tidy should be run often on any changes to the code to catch obvious errors.
 
+### Code Coverage
+
+A code coverage report is hosted along with our documentation on GitHub Pages. It is updated to reflect the code coverage of the source file implementations whenever the main branch is updated. However, it would be very slow to wait for the deployment to update on every push to a pull request so run the tool locally if working on improving coverage.
+
+A preset for gcc and clang are provided. I would recommend making a custom user preset to obtain the newest tools possible for coverage reports. But here is the built in gcc preset.
+
+```zsh
+cmake --preset=gcc-gcov
+cmake --build build --target tests
+make test
+cmake --build build --target coverage
+```
+
+View the current [coverage report here](https://skeletoss.github.io/ccc/coverage).
+
+### Presets
+
 Add a `CMakeUserPresets.json` file so that you can run the sanitizer presets found in `CMakePresets.json`. Here is my setup as a sample.
 
 ```json

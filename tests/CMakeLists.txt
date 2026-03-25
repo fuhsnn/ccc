@@ -85,6 +85,7 @@ add_buffer_test(test_buffer_construct)
 add_buffer_test(test_buffer_insert)
 add_buffer_test(test_buffer_erase)
 add_buffer_test(test_buffer_iterator)
+add_buffer_test(test_buffer_error)
 
 #############  Heap Priority Queue  ##########################
 add_library(flat_priority_queue_utility flat_priority_queue/flat_priority_queue_utility.h flat_priority_queue/flat_priority_queue_utility.c)
@@ -308,6 +309,7 @@ macro(add_flat_hash_map_test TEST_NAME)
       random
       ccc
       allocate
+      stack_allocator
   )
   set_target_properties(${TEST_NAME} 
     PROPERTIES 
@@ -323,6 +325,7 @@ add_flat_hash_map_test(test_flat_hash_map_erase)
 add_flat_hash_map_test(test_flat_hash_map_lru)
 add_flat_hash_map_test(test_flat_hash_map_entry)
 add_flat_hash_map_test(test_flat_hash_map_iterator)
+add_flat_hash_map_test(test_flat_hash_map_error)
 
 #############  Doubly Linked List ##########################
 

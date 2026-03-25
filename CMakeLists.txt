@@ -61,7 +61,7 @@ else()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endif()
 
-set(CCC_GCOV_TOOL "" CACHE STRING "Code coverage tool to use for coverage report")
+set(CCC_COVERAGE_TOOL "" CACHE STRING "Code coverage tool to use for coverage report")
 # Code coverage is easy on gcc but clang requires some extra steps. We can 
 # indicate via our presets that we are using a code coverage preset and we can
 # also manually specify the code coverage tool if we have one installed. This
@@ -69,8 +69,8 @@ set(CCC_GCOV_TOOL "" CACHE STRING "Code coverage tool to use for coverage report
 # for the gcc-XX.X compiler; this is not the default one installed.
 if (CCC_ENABLE_COVERAGE)
 
-    if (CCC_GCOV_TOOL)
-        set(GCOV_TOOL ${CCC_GCOV_TOOL})
+    if (CCC_COVERAGE_TOOL)
+        set(COVERAGE_TOOL ${CCC_COVERAGE_TOOL})
 
     # Clang had very tricky behavior especially on mac to successfully generate
     # lcov compatible reports. The command line would not accept clang's 
@@ -94,19 +94,19 @@ exec \"${LLVM_COV_EXECUTABLE}\" gcov \"$@\"
                         GROUP_READ GROUP_EXECUTE
                         WORLD_READ WORLD_EXECUTE)
 
-        set(GCOV_TOOL ${LLVM_GCOV_WRAPPER})
+        set(COVERAGE_TOOL ${LLVM_GCOV_WRAPPER})
 
     else()
-        set(GCOV_TOOL ${CCC_GCOV_TOOL})
+        set(COVERAGE_TOOL ${CCC_COVERAGE_TOOL})
     endif()
 
-    if (NOT GCOV_TOOL)
+    if (NOT COVERAGE_TOOL)
         message(FATAL_ERROR "no code coverage tool selected")
     endif()
 
-    message(STATUS "Using code coverage tool: ${GCOV_TOOL}")
+    message(STATUS "Using code coverage tool: ${COVERAGE_TOOL}")
     add_custom_target(coverage
-        COMMAND lcov --gcov-tool ${GCOV_TOOL}
+        COMMAND lcov --gcov-tool ${COVERAGE_TOOL}
                      --capture
                      --directory ${CMAKE_BINARY_DIR}
                      --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info

@@ -18,6 +18,11 @@ jobs:
           folder: docs/doxygen
           config_file: Doxyfile
 
+      - name: Setup LCOV
+        uses: hrishikesh-kadam/setup-lcov@v1
+        with:
+          ref: HEAD
+
       - name: Build Coverage
         run: |
           make clean

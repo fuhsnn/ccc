@@ -209,7 +209,17 @@ CCC_Entry const e = CCC_flat_hash_map_insert_or_assign(
 );
 ```
 
-This tells the reader that a key value pair will be inserted or assigned to an existing slot in the table and that resizing of the table is forbidden because a default initialized, empty `CCC_Allocator` is passed to the function. An empty compound literal reference is the correct way to express that no user provided implementation of that argument exists. The API will respond accordingly. See documentation for details.
+This tells the reader that a key value pair will be inserted or assigned to an existing slot in the table and that resizing of the table is forbidden because a default initialized, empty `CCC_Allocator` is passed to the function. This will also be a common pattern to use when clearing a container of its allocations and no advanced destructor functionality is required to act on each element before they are all freed.
+
+```c
+CCC_flat_hash_map_clear_and_free(
+    &map,
+    &(CCC_Destructor){},
+    &std_allocator
+);
+```
+
+No destructor has been implemented, but we follow the no passing `NULL` rule. An empty compound literal reference is the correct way to express that no user provided implementation of that argument exists. The API will respond accordingly. See documentation for details.
 
 #### Beware of Intrusive Containers {#beware-of-intrusive-containers}
 

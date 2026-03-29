@@ -207,7 +207,7 @@ CCC_Entry const e = CCC_flat_hash_map_insert_or_assign(
 );
 ```
 
-The user is trying to express that they don't want this function to allocate if the table is full. They want to keep the return value so they can check if this insertion failure has taken place and proceed with their program. However, using `NULL` is a programmer error and will return an error status because it obscures intent and may force users to consult documentation. Instead use this construction.
+The user is trying to express that they don't want this function to allocate if the table is full. They want to keep the return value so they can check if this insertion failure has taken place and proceed with their program. However, using `NULL` is a programmer error and will return an error status because it obscures intent and would force a reader unfamiliar with the collection to consult documentation. Instead use this construction.
 
 ```c
 CCC_Entry const e = CCC_flat_hash_map_insert_or_assign(
@@ -217,7 +217,7 @@ CCC_Entry const e = CCC_flat_hash_map_insert_or_assign(
 );
 ```
 
-This tells the reader that a key value pair will be inserted or assigned to an existing slot in the table and that resizing of the table is forbidden because a default initialized, empty `CCC_Allocator` is passed to the function. This will also be a common pattern to use when clearing a container of its allocations and no advanced destructor functionality is required to act on each element before they are all freed.
+This tells the reader that a key value pair will be inserted or assigned to an existing slot in the table and that resizing of the table is forbidden because a default initialized, empty `CCC_Allocator` is passed to the function. This is also a common pattern to use when clearing a container of its allocations and no advanced destructor functionality is required to act on each element before they are all freed.
 
 ```c
 CCC_flat_hash_map_clear_and_free(
@@ -348,11 +348,11 @@ The `_default()` initializers can be used at compile or runtime as well. The cor
 There are three important concepts about references the user must understand in the C Container Collection: pointers that may be invalidated, pointers that are stable, and handles that are stable. Here is a table summarizes the container types the user will encounter in this collection.
 
 
-|Type|Storage|Pointer Stability|Handle Stability|
+|Container|Memory Layout|Pointer Stability|Handle Stability|
 |----|-------|-----------------|----------------|
-|Intrusive|User-owned|Stable|N/A|
-|Flat|Container-owned|Unstable|N/A|
-|Array|Container-owned|Unstable|Stable|
+|Intrusive|Non-Contiguous|Stable|N/A|
+|Flat|Contiguous|Unstable|N/A|
+|Array|Contiguous|Unstable|Stable|
 
 
 #### Invalidated Pointers {#invalidated-pointers}

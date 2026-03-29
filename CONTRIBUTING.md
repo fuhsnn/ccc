@@ -36,8 +36,10 @@ A code coverage report is hosted along with our documentation on GitHub Pages. I
 A preset for gcc and clang are provided. I would recommend making a custom user preset, such as `cmake --preset=my-llvm-cov`, to obtain the newest tools possible for coverage reports. But here is the built in gcc preset.
 
 ```zsh
-make clean && cmake --preset=llvm-cov && make test && make coverage
+make clean && cmake --preset=llvm-cov && make test && make coverage-developer
 ```
+
+The developer version of the coverage report includes the tests to confirm all paths in written tests are executed. The `coverage-publish` target is the one that is hosted on GitHub pages along with the docs. It does not include tests to avoid appearing to pad percentages of coverage.
 
 The code coverage report is now in `docs/coverage` and double clicking `docs/coverage/index.html` will open a navigable version in your local browser. Writing the command this way ensures that the process stops if any step fails.
 

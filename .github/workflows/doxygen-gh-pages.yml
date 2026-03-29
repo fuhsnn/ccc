@@ -49,7 +49,7 @@ jobs:
 
       - name: Build Coverage
         run: |
-          make clean && cmake --preset=llvm-cov -DCMAKE_C_COMPILER="$PWD/llvm/bin/clang" -G "Ninja" -DCCC_COVERAGE_TOOL="$PWD/llvm/bin/llvm-cov" && make test && make coverage
+          make clean && cmake --preset=llvm-cov -DCMAKE_C_COMPILER="$PWD/llvm/bin/clang" -G "Ninja" -DCCC_COVERAGE_TOOL="$PWD/llvm/bin/llvm-cov" && make test && make coverage-publish
 
       - name: Deploy Coverage
         uses: peaceiris/actions-gh-pages@v4

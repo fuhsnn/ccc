@@ -1,4 +1,4 @@
-.PHONY: gcc-ccc clang-ccc default build gcc-release gcc-debug clang-release clang-debug sanitize-debug sanitize-release clean tests samples all-gcc-debug all-gcc-release all-sanitize-debug all-sanitize-release all-clang-debug all-clang-release test utility tidy format coverage
+.PHONY: gcc-ccc clang-ccc default build gcc-release gcc-debug clang-release clang-debug sanitize-debug sanitize-release clean tests samples all-gcc-debug all-gcc-release all-sanitize-debug all-sanitize-release all-clang-debug all-clang-release test utility tidy format coverage-developer coverage-publish
 
 MAKE := $(MAKE)
 MAKEFLAGS += --no-print-directory
@@ -66,8 +66,11 @@ samples:
 utility:
 	cmake --build $(BUILD_DIR) $(JOBS) --target utility
 
-coverage:
-	cmake --build $(BUILD_DIR) --target coverage
+coverage-developer:
+	cmake --build $(BUILD_DIR) --target coverage-developer
+
+coverage-publish:
+	cmake --build $(BUILD_DIR) --target coverage-publish
 
 all-gcc-debug:
 	cmake --preset=gcc-debug -DCMAKE_INSTALL_PREFIX=$(PREFIX) && cmake --build build $(JOBS) --target ccc tests samples

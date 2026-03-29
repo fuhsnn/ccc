@@ -107,7 +107,9 @@ exec \"${LLVM_COV_EXECUTABLE}\" gcov \"$@\"
         message(FATAL_ERROR "no code coverage tool selected")
     endif()
 
-    add_custom_target(coverage
+    # Developer coverage reports include all test files to confirm which test
+    # cod is ran. This should be for the local developer machine.
+    add_custom_target(coverage-developer
         COMMAND lcov --ignore-errors inconsistent 
                      --gcov-tool ${COVERAGE_TOOL}
                      --capture
@@ -128,6 +130,29 @@ exec \"${LLVM_COV_EXECUTABLE}\" gcov \"$@\"
         COMMAND genhtml ${CMAKE_SOURCE_DIR}/docs/coverage.info
                         --output-directory ${CMAKE_SOURCE_DIR}/docs/coverage
                         --prefix ${CMAKE_SOURCE_DIR}
+                        --title "CCC Test Suite Coverage Report"
+    )
+    
+    # The published report on github pages should not include tests as I don't
+    # want the C Container Collection to be seen as including tests to inflate
+    # coverage numbers. We want to build trust and show we are working hard on
+    # good library not just padding imaginary numbers.
+    add_custom_target(coverage-publish
+        COMMAND lcov --ignore-errors inconsistent 
+                     --gcov-tool ${COVERAGE_TOOL}
+                     --capture
+                     --directory ${CMAKE_BINARY_DIR}
+                     --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info
+
+        COMMAND lcov --ignore-errors inconsistent
+                     --extract ${CMAKE_SOURCE_DIR}/docs/coverage.info 
+                     '${CMAKE_SOURCE_DIR}/source/*'
+                     --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info
+
+        COMMAND genhtml ${CMAKE_SOURCE_DIR}/docs/coverage.info
+                        --output-directory ${CMAKE_SOURCE_DIR}/docs/coverage
+                        --prefix ${CMAKE_SOURCE_DIR}
+                        --flat
                         --title "CCC Test Suite Coverage Report"
     )
 endif()

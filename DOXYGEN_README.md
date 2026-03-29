@@ -1,17 +1,8 @@
 # C Container Collection Documentation
 
-- [Navigation](#header-navigation)
-- [CCC Cardinal Rules](#ccc-cardinal-rules)
-    - [Understand allocators](#understand-allocators)
-    - [Never pass `NULL`](#never-pass-null)
-    - [Use the correct initializer](#use-the-correct-initializer)
-    - [Understand pointer versus handle stability](#pointers-versus-handles)
-- [Installation](#installation)
-- [Coverage Report](#coverage-report)
-
 ## Header Navigation
 
-Follow the links to the key container headers.
+Follow the links to the C Container Collection headers.
 
 - [ccc/adaptive_map.h](https://skeletoss.github.io/ccc/adaptive__map_8h.html)
 - [ccc/array_adaptive_map.h](https://skeletoss.github.io/ccc/array__adaptive__map_8h.html)
@@ -227,6 +218,19 @@ CCC_priority_queue_push(
 
 Here, the user type is passed to the function as an inline compound literal reference. This is OK because an allocator is provided. Internally, the container will try to allocate a new node for the priority queue with the provided allocator and copy in the provided values in the user provided type argument. This would not work if allocation is forbidden.
 
+**WARNING! The following example shows possible incorrect usage of the CCC API.**
+
+```c
+struct Priority *elem = malloc(sizeof(struct Priority));
+CCC_priority_queue_push(
+    &pq,
+    &(struct Priority){.priority = 99}.pq_elem, /* <-ERROR HERE! */
+    &(CCC_Allocator){}
+);
+```
+
+Because allocation has been forbidden, the container does not assume anything about the scope and lifetime of the provided user element. It simply operates on the intrusive element the user is providing to maintain internal data structure invariants. Because an inline compound literal reference has been provided the scope and lifetime of that element is the enclosing block, and that is almost always a programmer error. The user must guarantee the lifetime of the element.
+
 ```c
 struct Priority *elem = malloc(sizeof(struct Priority));
 CCC_priority_queue_push(
@@ -235,8 +239,6 @@ CCC_priority_queue_push(
     &(CCC_Allocator){}
 );
 ```
-
-Because allocation has been forbidden, the container does not assume anything about the scope and lifetime of the provided user element. It simply operates on the intrusive element the user is providing to maintain internal data structure invariants. If an inline compound literal reference had been provided the scope and lifetime of that element would be the enclosing block, and that is almost always a programmer error.
 
 This required attention to scope and lifetime applies identically to all intrusive containers.
 
@@ -320,7 +322,7 @@ When a `Flat_` container is passed an allocator for an insert or push type opera
 
 ```c
 int *front = CCC_buffer_front(&buffer);
-(void)CCC_buffer_push(&buffer, &(int){7}, &allocator);
+(void)CCC_buffer_push_back(&buffer, &(int){7}, &allocator);
 /* front may be invalid */
 ```
 
@@ -371,7 +373,7 @@ The map assumes the pointer `*a` is still valid after the insertion of `*b`. The
 
 #### Stable Handles
 
-The special `Array_` based containers promise handle stability. This is similar to pointer stability, but provides slightly greater flexibility to the implementation. A `CCC_Handle` and its unwrapped `CCC_Handle_index`
+The special `Array_` based containers promise handle stability. This is similar to pointer stability, but provides slightly greater flexibility to the implementation. A `CCC_Handle` and its unwrapped `CCC_Handle_index` remain stable for the lifetime of the element to which they index.
 
 ```c
 struct Key {

@@ -324,7 +324,7 @@ int *front = CCC_buffer_front(&buffer);
 /* front may be invalid */
 ```
 
-After the push operation, the reference `front` may be invalid if the buffer has resized to fit the new element. This is also true for more complex containers such as the flat hash map.
+After the push operation, the reference `*front` may be invalid if the buffer has resized to fit the new element. This is also true for more complex containers such as the flat hash map.
 
 ```c
 struct Key {
@@ -335,7 +335,7 @@ struct Key *a = CCC_flat_hash_map_or_insert(
     CCC_flat_hash_map_entry(&map, &(int){7}, &allocator),
     &(struct Key){.key = 7, .value = 7},
 );
-struct Key *a = CCC_flat_hash_map_or_insert(
+struct Key *b = CCC_flat_hash_map_or_insert(
     CCC_flat_hash_map_entry(&map, &(int){8}, &allocator),
     &(struct Key){.key = 8, .value = 8},
 );

@@ -154,7 +154,7 @@ main(void) {
         .allocate = stack_allocator_allocate,
         .context = &stack_allocator_for((struct Val[1]){}),
     };
-    CCC_Priority_queue priority_queue = CCC_priority_queue_for(
+    CCC_Priority_queue priority_queue = CCC_priority_queue_default(
         struct Val,
         elem,
         CCC_ORDER_LESSER,

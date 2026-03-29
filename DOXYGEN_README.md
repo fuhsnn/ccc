@@ -371,7 +371,7 @@ After the insert or assign operation, the reference `*a` may have been invalidat
 
 #### Stable Pointers {#stable-pointers}
 
-Intrusive containers assume that the user defined types upon which they intrude are pointer stable. That means they assume no insertion or removal alters pointers to any other existing elements in the data structure. Consider an intrusive map.
+Intrusive containers assume that the user defined types upon which they intrude are pointer stable. That means that when other elements are inserted or removed, the location in memory of an existing element in the container never changes. Consider an intrusive map.
 
 ```c
 struct Key {
@@ -392,11 +392,11 @@ struct Key *b = CCC_tree_map_or_insert(
 /* a is still valid */
 ```
 
-The map assumes the pointer `*a` is still valid after the insertion of `*b`. The container assumption is the same if the user provides the element and allocation has been forbidden by passing an empty `&(CCC_Allocator){}`.
+The map assumes the pointer `*a` is still valid after the insertion of `*b`. The container assumption is the same whether an allocator has been provided or the user is managing memory and has passed an empty `&(CCC_Allocator){}`.
 
 #### Stable Handles {#stable-handles}
 
-The special `Array_` based containers promise handle stability. This is similar to pointer stability, but provides slightly greater flexibility to the implementation. A `CCC_Handle` and its unwrapped `CCC_Handle_index` remain stable for the lifetime of the element to which they index.
+The special `Array_` based containers promise handle stability. This is similar to pointer stability, but provides slightly greater flexibility to the container implementation. A `CCC_Handle` and its unwrapped `CCC_Handle_index` remain stable for the lifetime of the element in the container which they represent.
 
 ```c
 struct Key {
@@ -415,7 +415,7 @@ CCC_Handle_index b = CCC_array_tree_map_or_insert(
 );
 ```
 
-After the second element is inserted, `a` remains valid and can be provided to the container API to obtain a pointer to the user element. The underlying storage may have been resized or moved, but the location in the array remains stable. Therefore, only the handle index remains stable, not any user held pointers.
+After the second element is inserted, `a` remains valid and can be provided to the container API to obtain a pointer to the user element. The underlying storage may have been resized or moved, but the location in the array remains stable. Therefore, it is important to remember that only the handle index remains stable, never the pointer obtained with that index.
 
 ## Installation {#installation}
 

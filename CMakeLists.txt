@@ -115,14 +115,19 @@ exec \"${LLVM_COV_EXECUTABLE}\" gcov \"$@\"
                      --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info
 
         COMMAND lcov --ignore-errors inconsistent
-                     --extract ${CMAKE_SOURCE_DIR}/docs/coverage.info '*/tests/*' '*/source/*'
+                     --extract ${CMAKE_SOURCE_DIR}/docs/coverage.info 
+                     '${CMAKE_SOURCE_DIR}/tests/*' 
+                     '${CMAKE_SOURCE_DIR}/source/*'
                      --output-file ${CMAKE_SOURCE_DIR}/docs/coverage.info
 
-        COMMAND lcov --remove ${CMAKE_SOURCE_DIR}/docs/coverage.info '*/_deps/*' '*/tests/run_tests.c' '*/tests/checkers.c'
-                 -o ${CMAKE_SOURCE_DIR}/docs/coverage.info
+        COMMAND lcov --remove ${CMAKE_SOURCE_DIR}/docs/coverage.info 
+                     '${CMAKE_SOURCE_DIR}/tests/run_tests.c' 
+                     '${CMAKE_SOURCE_DIR}/tests/checkers.c'
+                     -o ${CMAKE_SOURCE_DIR}/docs/coverage.info
 
         COMMAND genhtml ${CMAKE_SOURCE_DIR}/docs/coverage.info
                         --output-directory ${CMAKE_SOURCE_DIR}/docs/coverage
+                        --prefix ${CMAKE_SOURCE_DIR}
                         --title "CCC Test Suite Coverage Report"
     )
 endif()

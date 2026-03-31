@@ -43,19 +43,20 @@ If building this library separately to include its library file, add the
 flag to the build (and read INSTALL.md for more details).
 
 ```
-cmake --preset=clang-release -DCCC_FLAT_HASH_MAP_PORTABLE=ON
+cmake --preset=clang-ccc -DCCC_FLAT_HASH_MAP_PORTABLE=ON
 ```
 
 If an install location other than the release folder is desired don't forget
 to add the install prefix.
 
 ```
-cmake --preset=clang-release -DCCC_FLAT_HASH_MAP_PORTABLE=ON \
+cmake --preset=clang-ccc -DCCC_FLAT_HASH_MAP_PORTABLE=ON \
 -DCMAKE_INSTALL_PREFIX=/my/path/
 ```
 
-If this library is being built as part of your project then define the flag
-as part of your configuration.
+If this library is being built as part of your project via CMake's FetchContent
+mechanism, or any other method, then define the flag as part of your
+configuration.
 
 ```
 cmake --preset=my-preset -DCCC_FLAT_HASH_MAP_PORTABLE=ON
@@ -69,17 +70,11 @@ Or, add the flag to your `CMakePresets.json`.
 }
 ```
 
-Or, enable on a per target basis in your `CMakeLists.txt`.
+Or, enable it in your `CMakeLists.txt` after including the C Container
+Collection via CMake's FetchContent mechanism (see INSTALL.md).
 
 ```
-target_compile_definitions(my_target PRIVATE CCC_FLAT_HASH_MAP_PORTABLE)
-```
-
-Or finally, just define it before including the flat hash map header.
-
-```
-#define CCC_FLAT_HASH_MAP_PORTABLE
-#include "ccc/flat_hash_map.h"
+target_compile_definitions(ccc PRIVATE CCC_FLAT_HASH_MAP_PORTABLE)
 ```
 
 See the INSTALL.md file for more ways to configure the map for hosted and

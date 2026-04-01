@@ -20,7 +20,7 @@ Currently, this library supports a `FetchContent` or manual installation via CMa
 - Read [types.h](https://skeletoss.github.io/ccc/types_8h.html) to understand the `CCC_Allocator_interface` interface.
 - Read the [header](https://skeletoss.github.io/ccc/files.html) for the desired container to understand its functionality.
 - Read about generic [traits.h](https://skeletoss.github.io/ccc/traits_8h.html) shared across containers to make code more succinct.
-- Read [CONTRIBUTING.md](CONTRIBUTING.md) if interested in project structure, tools, and todos.
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [coverage report](https://skeletoss.github.io/ccc/coverage/) if interested in the project structure, tools, and todos.
 
 ## Containers
 

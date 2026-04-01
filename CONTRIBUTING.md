@@ -33,7 +33,7 @@ Required tools:
 
 A code coverage report is hosted along with our documentation on GitHub Pages. It is updated to reflect the code coverage of the source file implementations whenever the main branch is updated. However, it would be very slow to wait for the deployment to update on every push to a pull request so run the tool locally if working on improving coverage.
 
-A preset for gcc and clang are provided. I would recommend making a custom user preset, such as `cmake --preset=my-llvm-cov`, to obtain the newest tools possible for coverage reports. But here is the built in gcc preset.
+A preset for gcc and clang are provided. I would recommend making a custom user preset, such as `cmake --preset=my-llvm-cov`, to obtain the newest tools possible for coverage reports. I have found that even in gcc gcov compatibility mode, llvm-cov generates the more accurate reports.
 
 ```zsh
 make clean && cmake --preset=llvm-cov && make test && make coverage-developer
@@ -46,8 +46,6 @@ The code coverage report is now in `docs/coverage` and double clicking `docs/cov
 When writing tests to increase coverage, rerun the above command to regenerate a clean report and reload the web page you are viewing in your local browser to see if the changes hit the targeted lines. Start by trying to increase function coverage to ensure container functionality is working correctly. Then start to focus on specific lines and paths that need to be exercised.
 
 View the current [coverage report here](https://skeletoss.github.io/ccc/coverage). This report stays updated to the current state of the main branch. It does not track pull request branches.
-
-In my experience, Clang generates the more accurate coverage report, even in gcov emulated compatibility mode, which is what we use to generate reports.
 
 ### Presets
 
@@ -347,7 +345,7 @@ Variable length arrays are prohibited because they could cause hard to find bugs
 
 This library will never be as optimized as a C template-like library that generates type safe containers and in-lines all functions to interact with them. However, the benefit of this is that we will never bloat the user code with macro expansion every time they generate a new type container.
 
-We can still try to offer the user some performance benefits on key code paths via our container specialized macros. All macros that accept compound literal user types write the user specified data directly memory via casting instead of calling a generic copy function. The pseudo code for such an operation is roughly as follows.
+We can still try to offer the user some performance benefits on key code paths via our container specialized macros. All macros that accept compound literal user types write the user specified data directly to memory via casting instead of calling a generic copy function. The pseudo code for such an operation is roughly as follows.
 
 ```c
 #define map_insert_or_assign_macro(container_pointer, key, allocator,          \
@@ -376,7 +374,5 @@ The `defer` keyword is finally being added to major compilers. It is a technical
 
 ## To Do
 
-At least the following would need to happen before `v1.0`.
+We are very close to `v1.0`. Now that the first pass of code coverage and documentation is complete I am just working on naming everything correctly and ensuring the interfaces are as usable as possible. Suggestions are welcome during this phase.
 
-- A "bad user" test file should be added for every container in order to learn to what extent we can protect the user from their mistakes. If we cannot protect the user, the documentation must be obvious and clear regarding the critical error they can make.
-- Now that a much more efficient hash table has been implemented, an adaptation of Rust's Hashbrown Hash Table, it is time to start narrowing down changes and lock in interfaces for v1.0. Suggestions are welcome for this phase of refactoring.

@@ -79,3 +79,4 @@ install/
 *.gcov
 *.info
 coverage-html/
+Session.nvim

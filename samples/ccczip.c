@@ -176,6 +176,7 @@ static void zip_file(SV_Str_view, CCC_Allocator const *);
 static Flat_priority_queue build_encoding_priority_queue(
     FILE *, struct Huffman_tree *, CCC_Allocator const *
 );
+static CCC_Tribool bitq_is_empty(struct Bit_queue const *);
 static CCC_Result
 bitq_push_back(struct Bit_queue *, CCC_Tribool, CCC_Allocator const *);
 static CCC_Tribool bitq_pop_back(struct Bit_queue *);
@@ -246,13 +247,14 @@ static size_t min(size_t, size_t);
 /** Helper iterator to to turn a file pointer into a character iterator,
 setting up iteration of each character in the file. Name the iterator and then
 use it in the code block. Wrapping the code block in brackets is recommended for
-formatting, though not required.
-
-Do not return early or use goto out of this macro or memory will be leaked. */
+formatting, though not required. */
 #define foreach_filechar(file_pointer, char_iterator_name, codeblock...)       \
     do {                                                                       \
         check(fseek(file_pointer, 0L, SEEK_SET) >= 0);                         \
         char *linepointer = NULL;                                              \
+        defer {                                                                \
+            free(linepointer);                                                 \
+        }                                                                      \
         size_t len = 0;                                                        \
         ptrdiff_t read = 0;                                                    \
         while ((read = getline(&linepointer, &len, f)) > 0) {                  \
@@ -264,7 +266,6 @@ Do not return early or use goto out of this macro or memory will be leaked. */
                 codeblock                                                      \
             }                                                                  \
         }                                                                      \
-        free(linepointer);                                                     \
     } while (0)
 
 /*===========================   Argument Handling  ==========================*/
@@ -519,11 +520,10 @@ build_encoding_bitq(
         struct Path_memo const *const p = flat_hash_map_or_insert_with(
             flat_hash_map_and_modify_with(
                 flat_hash_map_entry_wrap(&path_memos, c, allocator),
-                struct Path_memo const *const seen_path,
+                struct Path_memo const *const memo,
                 {
-                    size_t const end
-                        = seen_path->bitq_start_index + seen_path->path_len;
-                    for (size_t i = seen_path->bitq_start_index; i < end; ++i) {
+                    size_t const end = memo->bitq_start_index + memo->path_len;
+                    for (size_t i = memo->bitq_start_index; i < end; ++i) {
                         CCC_Result const pushed = bitq_push_back(
                             &character_paths,
                             bitq_test(&character_paths, i),
@@ -718,7 +718,7 @@ write_bitq(FILE *const cccz, struct Bit_queue *const bq) {
     static_assert(sizeof(uint8_t) == sizeof(CCC_Tribool));
     uint8_t buf = 0;
     uint8_t i = 0;
-    while (bitq_count(bq)) {
+    while (!bitq_is_empty(bq)) {
         buf |= (uint8_t)(bitq_pop_front(bq) << i);
         ++i;
         if (i >= CHAR_BIT) {
@@ -894,7 +894,7 @@ reconstruct_tree(
     size_t current = 0;
     char const *leaves
         = string_arena_at(&blueprint->arena, &blueprint->leaf_string);
-    while (bitq_count(&blueprint->tree_paths)) {
+    while (!bitq_is_empty(&blueprint->tree_paths)) {
         CCC_Tribool is_internal_node = CCC_TRUE;
         if (!current) {
             is_internal_node = bitq_pop_front(&blueprint->tree_paths);
@@ -940,7 +940,7 @@ reconstruct_text(
     struct Bit_queue *const bq
 ) {
     size_t cur = tree->root;
-    while (bitq_count(bq)) {
+    while (!bitq_is_empty(bq)) {
         /* All paths started from the root during encoding and chose a direction
            first so popping is OK here. Root 1 node never was pushed to q. */
         CCC_Tribool const bit = bitq_pop_front(bq);
@@ -1272,6 +1272,11 @@ bitq_maybe_resize(
     bq->bs = compact_bits;
     bq->front = 0;
     return CCC_RESULT_OK;
+}
+
+static CCC_Tribool
+bitq_is_empty(struct Bit_queue const *const bq) {
+    return !bq->count;
 }
 
 static size_t

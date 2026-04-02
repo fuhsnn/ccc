@@ -25,6 +25,225 @@ Currently, this library supports a `FetchContent` or manual installation via CMa
 ## Containers
 
 <details>
+<summary>adaptive_map.h (dropdown)</summary>
+A pointer stable ordered map that stores unique keys, implemented with a self-optimizing tree structure.
+
+```c
+#include <assert.h>
+#include <string.h>
+#define ADAPTIVE_MAP_USING_NAMESPACE_CCC
+#define TRAITS_USING_NAMESPACE_CCC
+#include "ccc/adaptive_map.h"
+#include "ccc/traits.h"
+
+struct Name {
+    Adaptive_map_node e;
+    char const *name;
+};
+
+CCC_Order
+key_val_cmp(CCC_Key_comparator_arguments cmp) {
+    char const *const key = *(char **)cmp.key_left;
+    struct Name const *const right = cmp.type_right;
+    int const res = strcmp(key, right->name);
+    if (res == 0) {
+        return CCC_ORDER_EQUAL;
+    }
+    if (res < 0) {
+        return CCC_ORDER_LESSER;
+    }
+    return CCC_ORDER_GREATER;
+}
+
+int
+main(void) {
+    struct Name nodes[5];
+    Adaptive_map om = adaptive_map_default(
+        struct Name,
+        e,
+        name,
+        (CCC_Key_comparator){.compare = key_val_cmp}
+    );
+    char const *const sorted_names[5]
+        = {"Ferris", "Glenda", "Rocky", "Tux", "Ziggy"};
+    size_t const size = sizeof(sorted_names) / sizeof(sorted_names[0]);
+    size_t j = 7 % size;
+    for (size_t i = 0; i < size; ++i, j = (j + 7) % size) {
+        nodes[count(&om).count].name = sorted_names[j];
+        CCC_Entry e = insert_or_assign(
+            &om,
+            &nodes[count(&om).count].e
+            &(CCC_Allocator){}
+        );
+        assert(!insert_error(&e) && !occupied(&e));
+    }
+    j = 0;
+    for (struct Name const *n = begin(&om); n != end(&om);
+         n = next(&om, &n->e)) {
+        assert(n->name == sorted_names[j]);
+        assert(strcmp(n->name, sorted_names[j]) == 0);
+        ++j;
+    }
+    assert(count(&om).count == size);
+    CCC_Entry e = try_insert(
+        &om,
+        &(struct Name){.name = "Ferris"}.e,
+        &(CCC_Allocator){}
+    );
+    assert(count(&om).count == size);
+    assert(occupied(&e));
+    return 0;
+}
+```
+
+</details>
+
+<details>
+<summary>array_adaptive_map.h (dropdown)</summary>
+An ordered map implemented in array with an index based self-optimizing tree. Offers handle stability. Handles remain valid until an element is removed from a table regardless of other insertions, other deletions, or resizing of the array.
+
+```c
+#include <assert.h>
+#include <stdbool.h>
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+#define TRAITS_USING_NAMESPACE_CCC
+#define TYPES_USING_NAMESPACE_CCC
+#include "ccc/array_adaptive_map.h"
+#include "ccc/traits.h"
+
+struct Key_val {
+    int key;
+    int val;
+};
+
+static CCC_Order
+key_val_cmp(CCC_Key_comparator_arguments const cmp) {
+    struct Key_val const *const right = cmp.type_right;
+    int const key_left = *((int *)cmp.key_left);
+    return (key_left > right->key) - (key_left < right->key);
+}
+
+int
+main(void) {
+    /* stack array of 25 elements with one slot for sentinel, intrusive field
+       named elem, key field named key, no allocation permission, key comparison
+       function, no context data. */
+    Array_adaptive_map s = array_adaptive_map_with_storage(
+        key,
+        (CCC_Key_comparator){.compare = key_val_cmp},
+        (struct Key_val[26]){}
+    );
+    int const num_nodes = 25;
+    /* 0, 5, 10, 15, 20, 25, 30, 35,... 120 */
+    for (int i = 0, id = 0; i < num_nodes; ++i, id += 5) {
+        (void)insert_or_assign(
+            &s, &(struct Key_val){.key = id, .val = i}.elem, &(CCC_Allocator){}
+        );
+    }
+    /* This should be the following Range [6,44). 6 should raise to
+       next value not less than 6, 10 and 44 should be the first
+       value greater than 44, 45. */
+    int range_keys[8] = {10, 15, 20, 25, 30, 35, 40, 45};
+    Handle_range r = equal_range(&s, &(int){6}, &(int){44});
+    int index = 0;
+    for (Handle_index i = range_begin(&r); i != range_end(&r);
+         i = next(&s, i)) {
+        struct Key_val const *const kv = array_adaptive_map_at(&s, i);
+        assert(kv->key == range_keys[index]);
+        ++index;
+    }
+    /* This should be the following Range [119,84). 119 should be
+       dropped to first value not greater than 119 and last should
+       be dropped to first value less than 84. */
+    int range_reverse_keys[8] = {115, 110, 105, 100, 95, 90, 85, 80};
+    Handle_range_reverse rr = equal_range_reverse(&s, &(int){119}, &(int){84});
+    index = 0;
+    for (Handle_index i = range_reverse_begin(&rr); i != range_reverse_end(&rr);
+         i = reverse_next(&s, i)) {
+        struct Key_val const *const kv = array_adaptive_map_at(&s, i);
+        assert(kv->key == range_reverse_keys[index]);
+        ++index;
+    }
+    return 0;
+}
+```
+
+</details>
+
+<details>
+<summary>array_tree_map.h (dropdown)</summary>
+An ordered map with strict runtime bounds implemented in an array with indices tracking the tree structure. Offers handle stability. Handles remain valid until an element is removed from a table regardless of other insertions, other deletions, or resizing of the array.
+
+```c
+#include <assert.h>
+#include <stdbool.h>
+#define ARRAY_TREE_MAP_USING_NAMESPACE_CCC
+#define TRAITS_USING_NAMESPACE_CCC
+#define TYPES_USING_NAMESPACE_CCC
+#include "ccc/array_tree_map.h"
+#include "ccc/traits.h"
+
+struct Key_val {
+    int key;
+    int val;
+};
+
+static CCC_Order
+key_val_cmp(CCC_Key_comparator_arguments const cmp) {
+    struct Key_val const *const right = cmp.type_right;
+    int const key_left = *((int *)cmp.key_left);
+    return (key_left > right->key) - (key_left < right->key);
+}
+
+int
+main(void) {
+    /* stack array, user defined type, key field named key, no allocation
+       permission, key comparison function, no context data. */
+    Array_tree_map s = array_tree_map_with_storage(
+        key,
+        (CCC_Key_comparator){.compare = key_val_cmp},
+        (struct Kay_val[64]){}
+    );
+    int const num_nodes = 25;
+    /* 0, 5, 10, 15, 20, 25, 30, 35,... 120 */
+    for (int i = 0, id = 0; i < num_nodes; ++i, id += 5) {
+        (void)insert_or_assign(
+            &s,
+            &(struct Key_val){.key = id, .val = i}.elem,
+            &(CCC_Allocator){}
+        );
+    }
+    /* This should be the following Range [6,44). 6 should raise to
+       next value not less than 6, 10 and 44 should be the first
+       value greater than 44, 45. */
+    int range_keys[8] = {10, 15, 20, 25, 30, 35, 40, 45};
+    Handle_range r = equal_range(&s, &(int){6}, &(int){44});
+    int index = 0;
+    for (Handle_index i = range_begin(&r); i != range_end(&r);
+         i = next(&s, &i->elem)) {
+        struct Key_val const *const kv = array_tree_map_at(&s, i);
+        assert(kv->key == range_keys[index]);
+        ++index;
+    }
+    /* This should be the following Range [119,84). 119 should be
+       dropped to first value not greater than 119 and last should
+       be dropped to first value less than 84. */
+    int range_reverse_keys[8] = {115, 110, 105, 100, 95, 90, 85, 80};
+    Handle_range_reverse rr = equal_range_reverse(&s, &(int){119}, &(int){84});
+    index = 0;
+    for (Handle_index i = range_reverse_begin(&rr); i != range_reverse_end(&rr);
+         i = reverse_next(&s, &i->elem)) {
+        struct Key_val const *const kv = array_tree_map_at(&s, i);
+        assert(kv->key == range_reverse_keys[index]);
+        ++index;
+    }
+    return 0;
+}
+```
+
+</details>
+
+<details>
 <summary>doubly_linked_list.h (dropdown)</summary>
 A dynamic container for efficient insertion and removal at any position.
 
@@ -170,6 +389,7 @@ main(void) {
     return 0;
 }
 ```
+
 </details>
 
 <details>
@@ -409,225 +629,6 @@ main(void) {
 </details>
 
 <details>
-<summary>array_adaptive_map.h (dropdown)</summary>
-An ordered map implemented in array with an index based self-optimizing tree. Offers handle stability. Handles remain valid until an element is removed from a table regardless of other insertions, other deletions, or resizing of the array.
-
-```c
-#include <assert.h>
-#include <stdbool.h>
-#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
-#define TRAITS_USING_NAMESPACE_CCC
-#define TYPES_USING_NAMESPACE_CCC
-#include "ccc/array_adaptive_map.h"
-#include "ccc/traits.h"
-
-struct Key_val {
-    int key;
-    int val;
-};
-
-static CCC_Order
-key_val_cmp(CCC_Key_comparator_arguments const cmp) {
-    struct Key_val const *const right = cmp.type_right;
-    int const key_left = *((int *)cmp.key_left);
-    return (key_left > right->key) - (key_left < right->key);
-}
-
-int
-main(void) {
-    /* stack array of 25 elements with one slot for sentinel, intrusive field
-       named elem, key field named key, no allocation permission, key comparison
-       function, no context data. */
-    Array_adaptive_map s = array_adaptive_map_with_storage(
-        key,
-        (CCC_Key_comparator){.compare = key_val_cmp},
-        (struct Key_val[26]){}
-    );
-    int const num_nodes = 25;
-    /* 0, 5, 10, 15, 20, 25, 30, 35,... 120 */
-    for (int i = 0, id = 0; i < num_nodes; ++i, id += 5) {
-        (void)insert_or_assign(
-            &s, &(struct Key_val){.key = id, .val = i}.elem, &(CCC_Allocator){}
-        );
-    }
-    /* This should be the following Range [6,44). 6 should raise to
-       next value not less than 6, 10 and 44 should be the first
-       value greater than 44, 45. */
-    int range_keys[8] = {10, 15, 20, 25, 30, 35, 40, 45};
-    Handle_range r = equal_range(&s, &(int){6}, &(int){44});
-    int index = 0;
-    for (Handle_index i = range_begin(&r); i != range_end(&r);
-         i = next(&s, i)) {
-        struct Key_val const *const kv = array_adaptive_map_at(&s, i);
-        assert(kv->key == range_keys[index]);
-        ++index;
-    }
-    /* This should be the following Range [119,84). 119 should be
-       dropped to first value not greater than 119 and last should
-       be dropped to first value less than 84. */
-    int range_reverse_keys[8] = {115, 110, 105, 100, 95, 90, 85, 80};
-    Handle_range_reverse rr = equal_range_reverse(&s, &(int){119}, &(int){84});
-    index = 0;
-    for (Handle_index i = range_reverse_begin(&rr); i != range_reverse_end(&rr);
-         i = reverse_next(&s, i)) {
-        struct Key_val const *const kv = array_adaptive_map_at(&s, i);
-        assert(kv->key == range_reverse_keys[index]);
-        ++index;
-    }
-    return 0;
-}
-```
-
-</details>
-
-<details>
-<summary>array_tree_map.h (dropdown)</summary>
-An ordered map with strict runtime bounds implemented in an array with indices tracking the tree structure. Offers handle stability. Handles remain valid until an element is removed from a table regardless of other insertions, other deletions, or resizing of the array.
-
-```c
-#include <assert.h>
-#include <stdbool.h>
-#define ARRAY_TREE_MAP_USING_NAMESPACE_CCC
-#define TRAITS_USING_NAMESPACE_CCC
-#define TYPES_USING_NAMESPACE_CCC
-#include "ccc/array_tree_map.h"
-#include "ccc/traits.h"
-
-struct Key_val {
-    int key;
-    int val;
-};
-
-static CCC_Order
-key_val_cmp(CCC_Key_comparator_arguments const cmp) {
-    struct Key_val const *const right = cmp.type_right;
-    int const key_left = *((int *)cmp.key_left);
-    return (key_left > right->key) - (key_left < right->key);
-}
-
-int
-main(void) {
-    /* stack array, user defined type, key field named key, no allocation
-       permission, key comparison function, no context data. */
-    Array_tree_map s = array_tree_map_with_storage(
-        key,
-        (CCC_Key_comparator){.compare = key_val_cmp},
-        (struct Kay_val[64]){}
-    );
-    int const num_nodes = 25;
-    /* 0, 5, 10, 15, 20, 25, 30, 35,... 120 */
-    for (int i = 0, id = 0; i < num_nodes; ++i, id += 5) {
-        (void)insert_or_assign(
-            &s,
-            &(struct Key_val){.key = id, .val = i}.elem,
-            &(CCC_Allocator){}
-        );
-    }
-    /* This should be the following Range [6,44). 6 should raise to
-       next value not less than 6, 10 and 44 should be the first
-       value greater than 44, 45. */
-    int range_keys[8] = {10, 15, 20, 25, 30, 35, 40, 45};
-    Handle_range r = equal_range(&s, &(int){6}, &(int){44});
-    int index = 0;
-    for (Handle_index i = range_begin(&r); i != range_end(&r);
-         i = next(&s, &i->elem)) {
-        struct Key_val const *const kv = array_tree_map_at(&s, i);
-        assert(kv->key == range_keys[index]);
-        ++index;
-    }
-    /* This should be the following Range [119,84). 119 should be
-       dropped to first value not greater than 119 and last should
-       be dropped to first value less than 84. */
-    int range_reverse_keys[8] = {115, 110, 105, 100, 95, 90, 85, 80};
-    Handle_range_reverse rr = equal_range_reverse(&s, &(int){119}, &(int){84});
-    index = 0;
-    for (Handle_index i = range_reverse_begin(&rr); i != range_reverse_end(&rr);
-         i = reverse_next(&s, &i->elem)) {
-        struct Key_val const *const kv = array_tree_map_at(&s, i);
-        assert(kv->key == range_reverse_keys[index]);
-        ++index;
-    }
-    return 0;
-}
-```
-
-</details>
-
-<details>
-<summary>adaptive_map.h (dropdown)</summary>
-A pointer stable ordered map that stores unique keys, implemented with a self-optimizing tree structure.
-
-```c
-#include <assert.h>
-#include <string.h>
-#define ADAPTIVE_MAP_USING_NAMESPACE_CCC
-#define TRAITS_USING_NAMESPACE_CCC
-#include "ccc/adaptive_map.h"
-#include "ccc/traits.h"
-
-struct Name {
-    Adaptive_map_node e;
-    char const *name;
-};
-
-CCC_Order
-key_val_cmp(CCC_Key_comparator_arguments cmp) {
-    char const *const key = *(char **)cmp.key_left;
-    struct Name const *const right = cmp.type_right;
-    int const res = strcmp(key, right->name);
-    if (res == 0) {
-        return CCC_ORDER_EQUAL;
-    }
-    if (res < 0) {
-        return CCC_ORDER_LESSER;
-    }
-    return CCC_ORDER_GREATER;
-}
-
-int
-main(void) {
-    struct Name nodes[5];
-    Adaptive_map om = adaptive_map_default(
-        struct Name,
-        e,
-        name,
-        (CCC_Key_comparator){.compare = key_val_cmp}
-    );
-    char const *const sorted_names[5]
-        = {"Ferris", "Glenda", "Rocky", "Tux", "Ziggy"};
-    size_t const size = sizeof(sorted_names) / sizeof(sorted_names[0]);
-    size_t j = 7 % size;
-    for (size_t i = 0; i < size; ++i, j = (j + 7) % size) {
-        nodes[count(&om).count].name = sorted_names[j];
-        CCC_Entry e = insert_or_assign(
-            &om,
-            &nodes[count(&om).count].e
-            &(CCC_Allocator){}
-        );
-        assert(!insert_error(&e) && !occupied(&e));
-    }
-    j = 0;
-    for (struct Name const *n = begin(&om); n != end(&om);
-         n = next(&om, &n->e)) {
-        assert(n->name == sorted_names[j]);
-        assert(strcmp(n->name, sorted_names[j]) == 0);
-        ++j;
-    }
-    assert(count(&om).count == size);
-    CCC_Entry e = try_insert(
-        &om,
-        &(struct Name){.name = "Ferris"}.e,
-        &(CCC_Allocator){}
-    );
-    assert(count(&om).count == size);
-    assert(occupied(&e));
-    return 0;
-}
-```
-
-</details>
-
-<details>
 <summary>priority_queue.h (dropdown)</summary>
 A pointer stable priority queue offering O(1) push and efficient decrease, increase, erase, and extract operations.
 
@@ -673,6 +674,49 @@ main(void) {
     assert(decreased);
     struct Val const *const v = front(&priority_queue);
     assert(v->val == -99);
+    return 0;
+}
+```
+
+</details>
+
+<details>
+<summary>singly_linked_list.h (dropdown)</summary>
+A low overhead push-to-front container. When contiguity is not possible and the access pattern resembles a stack this is more-efficient than a doubly-linked list.
+
+```c
+#include <assert.h>
+#define SINGLY_LINKED_LIST_USING_NAMESPACE_CCC
+#define TRAITS_USING_NAMESPACE_CCC
+#include "ccc/singly_linked_list.h"
+#include "ccc/traits.h"
+
+struct Int_node {
+    int i;
+    Singly_linked_list_node e;
+};
+
+static CCC_Order
+int_cmp(CCC_Comparator_arguments const cmp) {
+    struct Int_node const *const left = cmp.type_left;
+    struct Int_node const *const right = cmp.type_right;
+    return (left->i > right->i) - (left->i < right->i);
+}
+
+int
+main(void) {
+    /* singly linked list l, list elem field e, no allocation permission,
+       comparing integers, no context data. */
+    Singly_linked_list l = singly_linked_list_default(struct Int_node, e);
+    struct Int_node elems[3] = {{.i = 3}, {.i = 2}, {.i = 1}};
+    (void)push_front(&l, &elems[0].e, &(CCC_Allocator){});
+    (void)push_front(&l, &elems[1].e, &(CCC_Allocator){});
+    (void)push_front(&l, &elems[2].e, &(CCC_Allocator){});
+    struct Int_node const *i = front(&l);
+    assert(i->i == 1);
+    pop_front(&l, &(CCC_Allocator){});
+    i = front(&l);
+    assert(i->i == 2);
     return 0;
 }
 ```
@@ -742,49 +786,6 @@ main(void) {
         assert(i->key == range_reverse_keys[index]);
         ++index;
     }
-    return 0;
-}
-```
-
-</details>
-
-<details>
-<summary>singly_linked_list.h (dropdown)</summary>
-A low overhead push-to-front container. When contiguity is not possible and the access pattern resembles a stack this is more-efficient than a doubly-linked list.
-
-```c
-#include <assert.h>
-#define SINGLY_LINKED_LIST_USING_NAMESPACE_CCC
-#define TRAITS_USING_NAMESPACE_CCC
-#include "ccc/singly_linked_list.h"
-#include "ccc/traits.h"
-
-struct Int_node {
-    int i;
-    Singly_linked_list_node e;
-};
-
-static CCC_Order
-int_cmp(CCC_Comparator_arguments const cmp) {
-    struct Int_node const *const left = cmp.type_left;
-    struct Int_node const *const right = cmp.type_right;
-    return (left->i > right->i) - (left->i < right->i);
-}
-
-int
-main(void) {
-    /* singly linked list l, list elem field e, no allocation permission,
-       comparing integers, no context data. */
-    Singly_linked_list l = singly_linked_list_default(struct Int_node, e);
-    struct Int_node elems[3] = {{.i = 3}, {.i = 2}, {.i = 1}};
-    (void)push_front(&l, &elems[0].e, &(CCC_Allocator){});
-    (void)push_front(&l, &elems[1].e, &(CCC_Allocator){});
-    (void)push_front(&l, &elems[2].e, &(CCC_Allocator){});
-    struct Int_node const *i = front(&l);
-    assert(i->i == 1);
-    pop_front(&l, &(CCC_Allocator){});
-    i = front(&l);
-    assert(i->i == 2);
     return 0;
 }
 ```

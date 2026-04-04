@@ -62,9 +62,9 @@ enum : size_t {
 /** @internal Various constants to support bit block size bit ops. */
 enum : Bit_block {
     /** @internal A mask of a bit block with all bits on. */
-    BIT_BLOCK_ON = ((Bit_block)~0),
+    BLOCK_ON = ((Bit_block)~0),
     /** @internal The Most Significant Bit of a bit block turned on to 1. */
-    BIT_BLOCK_MSB = (((Bit_block)1) << (((SIZEOF_BLOCK * CHAR_BIT)) - 1)),
+    BLOCK_MSB = (((Bit_block)1) << (((SIZEOF_BLOCK * CHAR_BIT)) - 1)),
 };
 
 /** @internal An index into the block array or count of bit blocks. The block
@@ -103,25 +103,25 @@ typedef uint8_t Bit_count;
 
 enum : Bit_count {
     /** @internal How many total bits that fit in a bit block. */
-    BIT_BLOCK_BITS = (SIZEOF_BLOCK * CHAR_BIT),
+    BLOCK_BITS = (SIZEOF_BLOCK * CHAR_BIT),
     /** @internal Used for static assert clarity. */
     U8_BLOCK_MAX = UINT8_MAX,
     /** @internal Hand coded log2 of block bits to avoid division. */
-    BIT_BLOCK_BITS_LOG2 = 5,
+    BLOCK_BITS_LOG2 = 5,
 };
 static_assert(
-    (BIT_BLOCK_BITS & (BIT_BLOCK_BITS - 1)) == 0,
+    (BLOCK_BITS & (BLOCK_BITS - 1)) == 0,
     "the number of bits in a block is always a power of two, "
     "helping avoid division and modulo operations when possible"
 );
 static_assert(
-    BIT_BLOCK_BITS >> BIT_BLOCK_BITS_LOG2 == 1,
+    BLOCK_BITS >> BLOCK_BITS_LOG2 == 1,
     "hand coded log2 of bitblock bits is always correct"
 );
 static_assert(
     (Bit_count) ~((Bit_count)0) >= (Bit_count)0, "Bit_count must be unsigned"
 );
-static_assert(UINT8_MAX >= BIT_BLOCK_BITS, "Bit_count counts all block bits.");
+static_assert(UINT8_MAX >= BLOCK_BITS, "Bit_count counts all block bits.");
 
 /** @internal A signed index within a block. A block is set to some number
 of bits as determined by the type used for each block. This type is intended to
@@ -143,7 +143,7 @@ static_assert(
     "Bit_signed_count must be signed"
 );
 static_assert(
-    INT16_MAX >= BIT_BLOCK_BITS, "Bit_signed_count counts all block bits"
+    INT16_MAX >= BLOCK_BITS, "Bit_signed_count counts all block bits"
 );
 
 /** @internal A helper to allow for an efficient linear scan for groups of 0's
@@ -323,7 +323,7 @@ CCC_flat_bitset_shift_left(
             bitset->blocks[write] = bitset->blocks[shift];
         }
     } else {
-        Bit_count const remain = BIT_BLOCK_BITS - split;
+        Bit_count const remain = BLOCK_BITS - split;
         for (Block_count shift = end - blocks, write = end; shift > 0;
              --shift, --write) {
             bitset->blocks[write] = (bitset->blocks[shift] << split)
@@ -362,7 +362,7 @@ CCC_flat_bitset_shift_right(
             bitset->blocks[write] = bitset->blocks[shift];
         }
     } else {
-        Bit_count const remain = BIT_BLOCK_BITS - split;
+        Bit_count const remain = BLOCK_BITS - split;
         for (Block_count shift = blocks, write = 0; shift < end;
              ++shift, ++write) {
             bitset->blocks[write] = (bitset->blocks[shift + 1] << remain)
@@ -443,9 +443,9 @@ CCC_flat_bitset_set_range(
     }
     Block_count start_block = block_count_index(range_start_index);
     Bit_count const start_bit = bit_count_index(range_start_index);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + range_bit_count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + range_bit_count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + range_bit_count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + range_bit_count));
     }
 
     /* Logic is uniform except for key lines to turn bits on or off. */
@@ -466,8 +466,7 @@ CCC_flat_bitset_set_range(
         );
     }
     Bit_count const end_bit = bit_count_index(end_i - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
 
     /* Same as first block but we are careful about bits past our range. */
     b ? (bitset->blocks[end_block] |= last_block_on)
@@ -520,9 +519,9 @@ CCC_flat_bitset_reset_range(
     }
     Block_count start_block = block_count_index(range_start_index);
     Bit_count const start_bit = bit_count_index(range_start_index);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + range_bit_count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + range_bit_count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + range_bit_count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + range_bit_count));
     }
     bitset->blocks[start_block] &= ~first_block_on;
     Block_count const end_block = block_count_index(end_i - 1);
@@ -538,8 +537,7 @@ CCC_flat_bitset_reset_range(
         );
     }
     Bit_count const end_bit = bit_count_index(end_i - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
     bitset->blocks[end_block] &= ~last_block_on;
     fix_end(bitset);
     return CCC_RESULT_OK;
@@ -590,9 +588,9 @@ CCC_flat_bitset_flip_range(
     }
     Block_count start_block = block_count_index(range_start_index);
     Bit_count const start_bit = bit_count_index(range_start_index);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + range_bit_count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + range_bit_count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + range_bit_count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + range_bit_count));
     }
     bitset->blocks[start_block] ^= first_block_on;
     Block_count const end_block = block_count_index(end_i - 1);
@@ -604,8 +602,7 @@ CCC_flat_bitset_flip_range(
         bitset->blocks[start_block] = ~bitset->blocks[start_block];
     }
     Bit_count const end_bit = bit_count_index(end_i - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
     bitset->blocks[end_block] ^= last_block_on;
     fix_end(bitset);
     return CCC_RESULT_OK;
@@ -685,9 +682,9 @@ CCC_flat_bitset_popcount_range(
     size_t popped = 0;
     Block_count start_block = block_count_index(range_start_index);
     Bit_count const start_bit = bit_count_index(range_start_index);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + range_bit_count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + range_bit_count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + range_bit_count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + range_bit_count));
     }
     popped += popcount(first_block_on & bitset->blocks[start_block]);
     Block_count const end_block = block_count_index(end_i - 1);
@@ -698,8 +695,7 @@ CCC_flat_bitset_popcount_range(
         popped += popcount(bitset->blocks[start_block]);
     }
     Bit_count const end_bit = bit_count_index(end_i - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
     popped += popcount(last_block_on & bitset->blocks[end_block]);
     return (CCC_Count){.count = popped};
 }
@@ -1106,11 +1102,11 @@ maybe_resize(
         bits_needed <<= 1;
     }
     static_assert(
-        (BIT_BLOCK_BITS & (BIT_BLOCK_BITS - 1)) == 0,
+        (BLOCK_BITS & (BLOCK_BITS - 1)) == 0,
         "rounding trick only works for powers of 2"
     );
     size_t const new_capacity
-        = (bits_needed + (BIT_BLOCK_BITS - 1)) & ~((size_t)BIT_BLOCK_BITS - 1);
+        = (bits_needed + (BLOCK_BITS - 1)) & ~((size_t)BLOCK_BITS - 1);
     if (new_capacity <= bitset->capacity) {
         return CCC_RESULT_ARGUMENT_ERROR;
     }
@@ -1153,9 +1149,9 @@ first_trailing_bit_range(
     }
     Block_count start_block = block_count_index(i);
     Bit_count const start_bit = bit_count_index(i);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + count));
     }
     Bit_count trailing_zeros
         = is_one
@@ -1163,9 +1159,9 @@ first_trailing_bit_range(
             : count_trailing_zeros(
                   first_block_on & ~bitset->blocks[start_block]
               );
-    if (trailing_zeros != BIT_BLOCK_BITS) {
+    if (trailing_zeros != BLOCK_BITS) {
         return (CCC_Count){
-            .count = (start_block * BIT_BLOCK_BITS) + trailing_zeros,
+            .count = (start_block * BLOCK_BITS) + trailing_zeros,
         };
     }
     Block_count const end_block = block_count_index(end_i - 1);
@@ -1177,23 +1173,22 @@ first_trailing_bit_range(
         trailing_zeros = is_one
                            ? count_trailing_zeros(bitset->blocks[start_block])
                            : count_trailing_zeros(~bitset->blocks[start_block]);
-        if (trailing_zeros != BIT_BLOCK_BITS) {
+        if (trailing_zeros != BLOCK_BITS) {
             return (CCC_Count){
-                .count = (start_block * BIT_BLOCK_BITS) + trailing_zeros,
+                .count = (start_block * BLOCK_BITS) + trailing_zeros,
             };
         }
     }
     /* Handle last block. */
     Bit_count const end_bit = bit_count_index(end_i - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
     trailing_zeros
         = is_one
             ? count_trailing_zeros(last_block_on & bitset->blocks[end_block])
             : count_trailing_zeros(last_block_on & ~bitset->blocks[end_block]);
-    if (trailing_zeros != BIT_BLOCK_BITS) {
+    if (trailing_zeros != BLOCK_BITS) {
         return (CCC_Count){
-            .count = (end_block * BIT_BLOCK_BITS) + trailing_zeros,
+            .count = (end_block * BLOCK_BITS) + trailing_zeros,
         };
     }
     return (CCC_Count){.error = CCC_RESULT_FAIL};
@@ -1219,48 +1214,47 @@ first_trailing_bits_range( /* NOLINT (*cognitive-complexity) */
     size_t num_found = 0;
     size_t bits_start = i;
     Block_count cur_block = block_count_index(i);
-    size_t window_end = (cur_block * BIT_BLOCK_BITS) + BIT_BLOCK_BITS;
-    Bit_count bit_i = bit_count_index(i);
+    size_t window_end = (cur_block * BLOCK_BITS) + BLOCK_BITS;
+    Bit_count bit_index = bit_count_index(i);
     while (bits_start + num_bits <= range_end) {
+        assert(cur_block < block_count_index(bitset->capacity));
         Bit_block bits
-            = is_one ? bitset->blocks[cur_block] & (BIT_BLOCK_ON << bit_i)
-                     : ~bitset->blocks[cur_block] & (BIT_BLOCK_ON << bit_i);
+            = is_one ? bitset->blocks[cur_block] & (BLOCK_ON << bit_index)
+                     : ~bitset->blocks[cur_block] & (BLOCK_ON << bit_index);
         if (window_end > range_end) {
-            bits &= ~(BIT_BLOCK_ON << bit_count_index(range_end));
+            bits &= ~(BLOCK_ON << bit_count_index(range_end));
         }
         if (!bits) {
-            bit_i = 0;
-            bits_start = (cur_block + 1) * BIT_BLOCK_BITS;
+            bit_index = 0;
+            bits_start = (cur_block + 1) * BLOCK_BITS;
             num_found = 0;
             ++cur_block;
-            window_end += BIT_BLOCK_BITS;
+            window_end += BLOCK_BITS;
             continue;
         }
         size_t ones_remain = num_bits - num_found;
-        /* We need to check if we are connecting a prefix from a prior
-           block and the search could conclude in this block. If the
-           prefix run is broken then we need to reset our search for the
-           total run of ones. */
-        if (ones_remain <= BIT_BLOCK_BITS && ones_remain < num_bits) {
-            Bit_block const shifted_block = bits >> bit_i;
+        /* We need to check if we are connecting a prefix from a prior block and
+           the search could conclude in this block. If the prefix run is broken
+           then we need to reset our search for the total run of ones. */
+        if (ones_remain <= BLOCK_BITS && ones_remain < num_bits) {
+            Bit_block const shifted_block = bits >> bit_index;
             Bit_block const required_mask
-                = BIT_BLOCK_ON >> (BIT_BLOCK_BITS - ones_remain);
+                = BLOCK_ON >> (BLOCK_BITS - ones_remain);
             if (is_mask_match(shifted_block, required_mask)) {
                 return (CCC_Count){
                     .count = bits_start,
                 };
             }
             ones_remain = num_bits;
-            bit_i += count_trailing_zeros(~shifted_block);
+            bit_index += count_trailing_zeros(~shifted_block);
             num_found = 0;
-            bits_start = (cur_block * BIT_BLOCK_BITS) + bit_i;
+            bits_start = (cur_block * BLOCK_BITS) + bit_index;
         }
-        if (ones_remain <= BIT_BLOCK_BITS) {
+        if (ones_remain <= BLOCK_BITS) {
             assert(ones_remain);
-            assert(bit_i < BIT_BLOCK_BITS);
-            Bit_block shifted_block = bits >> bit_i;
-            Bit_block required_mask
-                = BIT_BLOCK_ON >> (BIT_BLOCK_BITS - ones_remain);
+            assert(bit_index < BLOCK_BITS);
+            Bit_block shifted_block = bits >> bit_index;
+            Bit_block required_mask = BLOCK_ON >> (BLOCK_BITS - ones_remain);
             /* The loop continues only while our block is numerically greater
                than the mask. Because unsigned integers are represented in base
                2 we get two automatic early exits here.
@@ -1276,41 +1270,39 @@ first_trailing_bits_range( /* NOLINT (*cognitive-complexity) */
             while (shifted_block >= required_mask) {
                 if (is_mask_match(shifted_block, required_mask)) {
                     return (CCC_Count){
-                        .count = (cur_block * BIT_BLOCK_BITS) + bit_i,
+                        .count = (cur_block * BLOCK_BITS) + bit_index,
                     };
                 }
-                ++bit_i;
+                ++bit_index;
                 shifted_block >>= 1;
             }
             num_found = 0;
         }
-        /* 2 cases covered: the ones remaining are greater than this
-           block could hold or we did not find a match by the masking we
-           just did. In either case we need the maximum contiguous ones
-           that run all the way to the MSB. The best we could have is a
-           full block of 1's. Otherwise we need to find where to start
-           our new search for contiguous 1's. This could be the next
-           block if there are not 1's that continue all the way to MSB. */
+        /* 2 cases covered: the ones remaining are greater than this block could
+           hold or we did not find a match by the masking we just did. In either
+           case we need the maximum contiguous ones that run all the way to the
+           MSB. The best we could have is a full block of 1's. Otherwise we need
+           to find where to start our new search for contiguous 1's. This could
+           be the next block if there are not 1's that continue to MSB. */
         Bit_count const leading_ones = count_leading_zeros(~bits);
         num_found += leading_ones;
-        if (leading_ones < BIT_BLOCK_BITS) {
-            bits_start = (cur_block * BIT_BLOCK_BITS)
-                       + (BIT_BLOCK_BITS - leading_ones);
+        if (leading_ones < BLOCK_BITS) {
+            bits_start = (cur_block * BLOCK_BITS) + (BLOCK_BITS - leading_ones);
         }
         if (num_found >= num_bits) {
             return (CCC_Count){.count = bits_start};
         }
-        bit_i = 0;
+        bit_index = 0;
         ++cur_block;
-        window_end += BIT_BLOCK_BITS;
+        window_end += BLOCK_BITS;
     }
     return (CCC_Count){.error = CCC_RESULT_FAIL};
 }
 
-/** A leading bit is the first bit in the range to be set to the indicated
-value within a block starting the search from the Most Significant Bit of
-each block. This means that if the range is larger than a single block we
-iterate in descending order through the set of blocks starting at `i + count
+/** A leading bit is the first bit in the range to be set to the indicated value
+within a block starting the search from the Most Significant Bit of each block.
+This means that if the range is larger than a single block we iterate in
+descending order through the set of blocks starting at `i + count
 - 1` for the range of `[i, i + count)`. The search within a given block
 proceeds from Most Significant Bit toward Least Significant Bit. */
 static CCC_Count
@@ -1329,10 +1321,9 @@ first_leading_bit_range(
     Bit_count const start_bit = bit_count_index(start_i);
     Bit_count const end_bit = bit_count_index(end_i);
     Block_count start_block = block_count_index(start_i);
-    Bit_block first_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - start_bit) - 1);
-    if (start_i - end_i + 1 < BIT_BLOCK_BITS) {
-        first_block_on &= (BIT_BLOCK_ON << end_bit);
+    Bit_block first_block_on = BLOCK_ON >> ((BLOCK_BITS - start_bit) - 1);
+    if (start_i - end_i + 1 < BLOCK_BITS) {
+        first_block_on &= (BLOCK_ON << end_bit);
     }
     Bit_count leading_zeros
         = is_one
@@ -1340,10 +1331,10 @@ first_leading_bit_range(
             : count_leading_zeros(
                   first_block_on & ~bitset->blocks[start_block]
               );
-    if (leading_zeros != BIT_BLOCK_BITS) {
+    if (leading_zeros != BLOCK_BITS) {
         return (CCC_Count){
-            .count = (start_block * BIT_BLOCK_BITS)
-                   + (Block_count)(BIT_BLOCK_BITS - leading_zeros - 1),
+            .count = (start_block * BLOCK_BITS)
+                   + (Block_count)(BLOCK_BITS - leading_zeros - 1),
         };
     }
     Block_count const end_block = block_count_index(end_i);
@@ -1354,23 +1345,23 @@ first_leading_bit_range(
         leading_zeros = is_one
                           ? count_leading_zeros(bitset->blocks[start_block])
                           : count_leading_zeros(~bitset->blocks[start_block]);
-        if (leading_zeros != BIT_BLOCK_BITS) {
+        if (leading_zeros != BLOCK_BITS) {
             return (CCC_Count){
-                .count = (start_block * BIT_BLOCK_BITS)
-                       + (Block_count)(BIT_BLOCK_BITS - leading_zeros - 1),
+                .count = (start_block * BLOCK_BITS)
+                       + (Block_count)(BLOCK_BITS - leading_zeros - 1),
             };
         }
     }
     /* Handle last block. */
-    Bit_block const last_block_on = (BIT_BLOCK_ON << end_bit);
+    Bit_block const last_block_on = (BLOCK_ON << end_bit);
     leading_zeros
         = is_one
             ? count_leading_zeros(last_block_on & bitset->blocks[end_block])
             : count_leading_zeros(last_block_on & ~bitset->blocks[end_block]);
-    if (leading_zeros != BIT_BLOCK_BITS) {
+    if (leading_zeros != BLOCK_BITS) {
         return (CCC_Count){
-            .count = (end_block * BIT_BLOCK_BITS)
-                   + (Block_count)(BIT_BLOCK_BITS - leading_zeros - 1),
+            .count = (end_block * BLOCK_BITS)
+                   + (Block_count)(BLOCK_BITS - leading_zeros - 1),
         };
     }
     return (CCC_Count){.error = CCC_RESULT_FAIL};
@@ -1389,11 +1380,11 @@ first_leading_bits_range( /* NOLINT (*cognitive-complexity) */
     size_t const num_bits,
     CCC_Tribool const is_one
 ) {
-    /* The only risk is that i is out of range of `ptrdiff_t` which would
-       mean that we cannot proceed with algorithm. However, this is unlikely
-       on most platforms as they often bound object size by the max pointer
-       difference possible, which this type provides. However, it is not
-       required by the C standard so we are obligated to check. */
+    /* The only risk is that i is out of range of `ptrdiff_t` which would mean
+       that we cannot proceed with algorithm. However, this is unlikely on most
+       platforms as they often bound object size by the max pointer difference
+       possible, which this type provides. However, it is not required by the C
+       standard so we are obligated to check. */
     ptrdiff_t const range_end = (ptrdiff_t)(i - 1);
     if (!bitset || !count || num_bits > PTRDIFF_MAX || i > PTRDIFF_MAX
         || i >= bitset->count || !num_bits || num_bits > count
@@ -1406,7 +1397,7 @@ first_leading_bits_range( /* NOLINT (*cognitive-complexity) */
        (i / block bits) for some block index must be less than i. */
     Block_signed_count cur_block
         = (Block_signed_count)block_count_index((size_t)bits_start);
-    Block_signed_count window_end = ((cur_block * BIT_BLOCK_BITS) - 1);
+    Block_signed_count window_end = ((cur_block * BLOCK_BITS) - 1);
     Bit_signed_count bit_index = bit_count_index((size_t)bits_start);
     /* Cast was checked at entry to function for safety. */
     while (bits_start >= range_end + (ptrdiff_t)num_bits) {
@@ -1415,37 +1406,36 @@ first_leading_bits_range( /* NOLINT (*cognitive-complexity) */
             && "current block is safe as index protected by bits_start "
                "iterating toward the end of the range"
         );
-        Bit_block bits
-            = is_one ? bitset->blocks[cur_block]
-                           & (BIT_BLOCK_ON >> (BIT_BLOCK_BITS - bit_index - 1))
-                     : ~bitset->blocks[cur_block]
-                           & (BIT_BLOCK_ON >> (BIT_BLOCK_BITS - bit_index - 1));
+        Bit_block bits = is_one
+                           ? bitset->blocks[cur_block]
+                                 & (BLOCK_ON >> (BLOCK_BITS - bit_index - 1))
+                           : ~bitset->blocks[cur_block]
+                                 & (BLOCK_ON >> (BLOCK_BITS - bit_index - 1));
         if (window_end < range_end) {
             assert(
                 range_end + 1 >= 0
                 && "If range end is less than -1 it is caught at entry to "
                    "function"
             );
-            bits &= (BIT_BLOCK_ON << bit_count_index((size_t)(range_end + 1)));
+            bits &= (BLOCK_ON << bit_count_index((size_t)(range_end + 1)));
         }
         if (!bits) {
-            bits_start = (cur_block * BIT_BLOCK_BITS) - 1;
-            window_end -= BIT_BLOCK_BITS;
-            bit_index = BIT_BLOCK_BITS - 1;
+            bits_start = (cur_block * BLOCK_BITS) - 1;
+            window_end -= BLOCK_BITS;
+            bit_index = BLOCK_BITS - 1;
             num_found = 0;
             --cur_block;
             continue;
         }
         size_t ones_remain = num_bits - num_found;
-        /* We need to check if we are connecting a prefix from a prior block
-           and the search could conclude in this block. If the prefix run is
-           broken then we need to reset our search for the total run of
-           ones. */
-        if (ones_remain <= BIT_BLOCK_BITS && ones_remain < num_bits) {
+        /* We need to check if we are connecting a prefix from a prior block and
+           the search could conclude in this block. If the prefix run is broken
+           then we need to reset our search for the total run of ones. */
+        if (ones_remain <= BLOCK_BITS && ones_remain < num_bits) {
             Bit_block const shifted_block = bits
-                                         << (BIT_BLOCK_BITS - bit_index - 1);
-            Bit_block const required_mask = BIT_BLOCK_ON
-                                         << (BIT_BLOCK_BITS - ones_remain);
+                                         << (BLOCK_BITS - bit_index - 1);
+            Bit_block const required_mask = BLOCK_ON
+                                         << (BLOCK_BITS - ones_remain);
             if (is_mask_match(shifted_block, required_mask)) {
                 return (CCC_Count){
                     .count = (size_t)bits_start,
@@ -1455,21 +1445,20 @@ first_leading_bits_range( /* NOLINT (*cognitive-complexity) */
             bit_index
                 = (Bit_signed_count)(bit_index
                                      - count_leading_zeros(~shifted_block));
-            bits_start = (cur_block * BIT_BLOCK_BITS) + bit_index;
+            bits_start = (cur_block * BLOCK_BITS) + bit_index;
             num_found = 0;
         }
-        if (ones_remain <= BIT_BLOCK_BITS) {
+        if (ones_remain <= BLOCK_BITS) {
             assert(bit_index >= 0);
-            assert(bit_index < BIT_BLOCK_BITS);
-            Bit_block shifted_block = bits << (BIT_BLOCK_BITS - bit_index - 1);
-            Bit_block const required_mask = BIT_BLOCK_ON
-                                         << (BIT_BLOCK_BITS - ones_remain);
+            assert(bit_index < BLOCK_BITS);
+            Bit_block shifted_block = bits << (BLOCK_BITS - bit_index - 1);
+            Bit_block const required_mask = BLOCK_ON
+                                         << (BLOCK_BITS - ones_remain);
             Bit_signed_count const end = (Bit_signed_count)ones_remain;
             while (bit_index >= end) {
                 if (is_mask_match(shifted_block, required_mask)) {
                     return (CCC_Count){
-                        .count
-                        = (size_t)((cur_block * BIT_BLOCK_BITS) + bit_index),
+                        .count = (size_t)((cur_block * BLOCK_BITS) + bit_index),
                     };
                 }
                 --bit_index;
@@ -1479,25 +1468,24 @@ first_leading_bits_range( /* NOLINT (*cognitive-complexity) */
         }
         Bit_signed_count const trailing_ones
             = (Bit_signed_count)count_trailing_zeros(~bits);
-        assert(trailing_ones >= 0);
         num_found += (size_t)trailing_ones;
-        if (trailing_ones != BIT_BLOCK_BITS) {
-            bits_start = (cur_block * BIT_BLOCK_BITS) + (trailing_ones - 1);
+        if (trailing_ones < BLOCK_BITS) {
+            bits_start = (cur_block * BLOCK_BITS) + (trailing_ones - 1);
         }
         if (num_found >= num_bits) {
             return (CCC_Count){.count = (size_t)bits_start};
         }
-        bit_index = BIT_BLOCK_BITS - 1;
+        bit_index = BLOCK_BITS - 1;
         --cur_block;
-        window_end -= BIT_BLOCK_BITS;
+        window_end -= BLOCK_BITS;
     }
     return (CCC_Count){.error = CCC_RESULT_FAIL};
 }
 
 /** Performs the any or none scan operation over the specified range. The only
 difference between the operations is the return value. Specify the desired
-Tribool value to return upon encountering an on bit. For any this is
-CCC_TRUE. For none this is CCC_FALSE. Saves writing two identical fns. */
+Tribool value to return upon encountering an on bit. For any this is CCC_TRUE.
+For none this is CCC_FALSE. Saves writing two identical fns. */
 static CCC_Tribool
 any_or_none_range(
     struct CCC_Flat_bitset const *const bitset,
@@ -1512,9 +1500,9 @@ any_or_none_range(
     }
     Block_count start_block = block_count_index(i);
     Bit_count const start_bit = bit_count_index(i);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + count));
     }
     if (first_block_on & bitset->blocks[start_block]) {
         return ret;
@@ -1526,13 +1514,12 @@ any_or_none_range(
     /* If this is the any check we might get lucky by checking the last
        block before looping over everything. */
     Bit_count const end_bit = bit_count_index(end_i - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
     if (last_block_on & bitset->blocks[end_block]) {
         return ret;
     }
     for (++start_block; start_block < end_block; ++start_block) {
-        if (bitset->blocks[start_block] & BIT_BLOCK_ON) {
+        if (bitset->blocks[start_block] & BLOCK_ON) {
             return ret;
         }
     }
@@ -1554,9 +1541,9 @@ all_range(
     }
     Block_count start_block = block_count_index(i);
     Bit_count const start_bit = bit_count_index(i);
-    Bit_block first_block_on = BIT_BLOCK_ON << start_bit;
-    if (start_bit + count < BIT_BLOCK_BITS) {
-        first_block_on &= ~(BIT_BLOCK_ON << (start_bit + count));
+    Bit_block first_block_on = BLOCK_ON << start_bit;
+    if (start_bit + count < BLOCK_BITS) {
+        first_block_on &= ~(BLOCK_ON << (start_bit + count));
     }
     if ((first_block_on & bitset->blocks[start_block]) != first_block_on) {
         return CCC_FALSE;
@@ -1566,13 +1553,12 @@ all_range(
         return CCC_TRUE;
     }
     while (++start_block < end_block) {
-        if (bitset->blocks[start_block] != BIT_BLOCK_ON) {
+        if (bitset->blocks[start_block] != BLOCK_ON) {
             return CCC_FALSE;
         }
     }
     Bit_count const end_bit = bit_count_index(end - 1);
-    Bit_block const last_block_on
-        = BIT_BLOCK_ON >> ((BIT_BLOCK_BITS - end_bit) - 1);
+    Bit_block const last_block_on = BLOCK_ON >> ((BLOCK_BITS - end_bit) - 1);
     if ((last_block_on & bitset->blocks[end_block]) != last_block_on) {
         return CCC_FALSE;
     }
@@ -1660,14 +1646,14 @@ block_count_index(size_t const flat_bitset_index) {
         "shifting to avoid division with power of 2 divisor is only "
         "defined for unsigned types"
     );
-    return flat_bitset_index >> BIT_BLOCK_BITS_LOG2;
+    return flat_bitset_index >> BLOCK_BITS_LOG2;
 }
 
 /** Returns the 0-based index within a block to which the given index belongs.
 This index will always be between [0, BIT_BLOCK_BITS - 1). */
 static inline Bit_count
 bit_count_index(size_t const flat_bitset_index) {
-    return flat_bitset_index & (BIT_BLOCK_BITS - 1);
+    return flat_bitset_index & (BLOCK_BITS - 1);
 }
 
 /** Returns the number of blocks required to store the given bits. Assumes bits
@@ -1680,7 +1666,7 @@ block_count(size_t const bit_count) {
         "defined for unsigned types"
     );
     assert(bit_count);
-    return (bit_count + (BIT_BLOCK_BITS - 1)) >> BIT_BLOCK_BITS_LOG2;
+    return (bit_count + (BLOCK_BITS - 1)) >> BLOCK_BITS_LOG2;
 }
 
 /** Returns min of size_t arguments. Beware of conversions. */
@@ -1697,7 +1683,7 @@ is_mask_match(Bit_block const block, Bit_block const on_mask) {
 /** The following asserts assure that whether portable or built in bit
 operations are used in the coming section we are safe in our assumptions about
 widths and counts. */
-static_assert(BIT_BLOCK_MSB < BIT_BLOCK_ON);
+static_assert(BLOCK_MSB < BLOCK_ON);
 static_assert(SIZEOF_BLOCK == sizeof(unsigned));
 
 /** Much of the code relies on the assumption that iterating over blocks at
@@ -1724,8 +1710,8 @@ popcount(Bit_block const b) {
 significant bit. */
 static inline Bit_count
 count_trailing_zeros(Bit_block const b) {
-    static_assert(__builtin_ctz(BIT_BLOCK_MSB) <= U8_BLOCK_MAX);
-    return b ? (Bit_count)__builtin_ctz(b) : BIT_BLOCK_BITS;
+    static_assert(__builtin_ctz(BLOCK_MSB) <= U8_BLOCK_MAX);
+    return b ? (Bit_count)__builtin_ctz(b) : BLOCK_BITS;
 }
 
 /** Counts the leading zeros in a bit block starting from the most significant
@@ -1733,7 +1719,7 @@ bit. */
 static inline Bit_count
 count_leading_zeros(Bit_block const b) {
     static_assert(__builtin_clz((Bit_block)1) <= U8_BLOCK_MAX);
-    return b ? (Bit_count)__builtin_clz(b) : BIT_BLOCK_BITS;
+    return b ? (Bit_count)__builtin_clz(b) : BLOCK_BITS;
 }
 
 #else /* !defined(__has_builtin) || !__has_builtin(__builtin_ctz)              \

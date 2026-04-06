@@ -1703,6 +1703,7 @@ of zero will return 0. A count equivalent to the block bit width will return a
 mask with all bits set to 1. */
 static inline Bit_block
 trailing_ones_mask(Bit_count const ones_count) {
+    assert(ones_count <= BLOCK_BITS && "shift is well defined for mask");
     return ones_count ? BLOCK_ON >> (BLOCK_BITS - ones_count) : 0;
 }
 
@@ -1714,6 +1715,7 @@ block. A count of zero will return 0. A count equivalent to the block bit width
 will return a mask with all bits set to 1. */
 static inline Bit_block
 leading_ones_mask(Bit_count const ones_count) {
+    assert(ones_count <= BLOCK_BITS && "shift is well defined for mask");
     return ones_count ? BLOCK_ON << (BLOCK_BITS - ones_count) : 0;
 }
 

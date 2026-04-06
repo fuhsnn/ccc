@@ -1263,10 +1263,10 @@ first_trailing_bits_range( /* NOLINT (*cognitive-complexity) */
                          and cannot match with further shifting.
                        - If all high bits match but some lower required bits are
                          zero, the block is numerically smaller than the mask
-                   and cannot match with further shifting. If the block has high
-                   order bits not in the mask it is greater than the mask and we
-                   continue checking, which is correct. This strategy optimizes
-                   out some useless shifts. */
+                         and cannot match with further shifting.
+                   If the block has high order bits not in the mask it is
+                   greater than the mask and we continue checking, which is
+                   correct. This strategy optimizes out some useless shifts. */
                 while (shifted_bits >= bits_remain_mask) {
                     if (is_mask_match(shifted_bits, bits_remain_mask)) {
                         return (CCC_Count){

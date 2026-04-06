@@ -1627,9 +1627,6 @@ This is used as a safety mechanism throughout the code after complex operations
 on bit blocks to ensure any side effects on unused bits are deleted. */
 static inline void
 fix_end(struct CCC_Flat_bitset *const bitset) {
-    /* Remember, we fill from LSB to MSB so we want the mask to start at
-       lower order bit which is why we do the second funky flip on the whole
-       op. */
     bitset->count
         ? (*block_at(bitset, bitset->count - 1)
            &= trailing_ones_mask(bit_count_index(bitset->count - 1) + 1))

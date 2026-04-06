@@ -1632,7 +1632,7 @@ fix_end(struct CCC_Flat_bitset *const bitset) {
        op. */
     bitset->count
         ? (*block_at(bitset, bitset->count - 1)
-           &= ~(((Bit_block)~1) << bit_count_index(bitset->count - 1)))
+           &= trailing_ones_mask(bit_count_index(bitset->count - 1) + 1))
         : (bitset->blocks[0] = 0);
 }
 

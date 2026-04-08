@@ -870,7 +870,7 @@ erase_inclusive_range(
     }
 }
 
-/** Finds the length from [begin, end]. End is counted. */
+/** Finds the length from [begin, end). */
 static size_t
 len(struct CCC_Doubly_linked_list_node const *begin,
     struct CCC_Doubly_linked_list_node const *const end) {

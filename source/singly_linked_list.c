@@ -700,7 +700,7 @@ erase_range(
     }
 }
 
-/** Returns the length [begin, end] inclusive. Assumes end follows begin. */
+/** Returns the length [begin, end). Assumes end follows begin. */
 static size_t
 len(struct CCC_Singly_linked_list_node const *begin,
     struct CCC_Singly_linked_list_node const *const end) {

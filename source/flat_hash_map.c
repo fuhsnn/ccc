@@ -802,15 +802,12 @@ CCC_flat_hash_map_validate(CCC_Flat_hash_map const *const map) {
     if (!map) {
         return CCC_TRIBOOL_ERROR;
     }
-    /* We initialized the metadata array of 0 capacity table? Not possible. */
     if (!is_uninitialized(map) && !map->mask) {
         return CCC_FALSE;
     }
-    /* No point checking invariants when lazy init hasn't happened yet. */
     if (is_uninitialized(map) || !map->mask) {
         return CCC_TRUE;
     }
-    /* We are initialized, these need to point to the array positions. */
     if (!map->data || !map->tag) {
         return CCC_FALSE;
     }
@@ -822,7 +819,6 @@ CCC_flat_hash_map_validate(CCC_Flat_hash_map const *const map) {
     size_t deleted = 0;
     for (size_t i = 0; i < (map->mask + 1); ++i) {
         struct CCC_Flat_hash_map_tag const t = map->tag[i];
-        /* If we are a special constant there are only two possible values. */
         if (tag_constant(t) && t.v != TAG_DELETED && t.v != TAG_EMPTY) {
             return CCC_FALSE;
         }
@@ -912,7 +908,6 @@ maybe_rehash_find_entry(
     CCC_Allocator const *const allocator
 ) {
     CCC_Result const slot_result = maybe_rehash(map, 1, allocator);
-    /* Map was not initialized correctly or cannot allocate. */
     if (slot_result != CCC_RESULT_OK && !map->mask) {
         return (struct CCC_Flat_hash_map_entry){
             .map = (struct CCC_Flat_hash_map *)map,

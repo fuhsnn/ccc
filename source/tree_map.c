@@ -780,7 +780,6 @@ next(
     }
     assert(map->root->parent == NULL);
     if (n->branch[traversal]) {
-        /* The goal is to get far left/right ASAP in any traversal. */
         for (n = n->branch[traversal]; n->branch[!traversal];
              n = n->branch[!traversal]) {}
         return (struct CCC_Tree_map_node *)n;

@@ -640,14 +640,11 @@ next(
         return NULL;
     }
     assert(t->root->parent == NULL);
-    /* The node is a parent, backtracked to, or the end. */
     if (n->branch[traversal] != NULL) {
-        /* The goal is to get far left/right ASAP in any traversal. */
         for (n = n->branch[traversal]; n->branch[!traversal] != NULL;
              n = n->branch[!traversal]) {}
         return n;
     }
-    /* This is how to return internal nodes on the way back up from a leaf. */
     for (; n->parent && n->parent->branch[!traversal] != n; n = n->parent) {}
     return n->parent;
 }
@@ -1009,12 +1006,11 @@ is_parent_correct(
         && is_parent_correct(t, root, root->branch[R]);
 }
 
-/* Validate tree prefers to use recursion to examine the tree over the
-   provided iterators of any implementation so as to avoid using a
-   flawed implementation of such iterators. This should help be more
-   sure that the implementation is correct because it follows the
-   truth of the provided pointers with its own stack as backtracking
-   information. */
+/** Validate tree prefers to use recursion to examine the tree over the provided
+iterators of any implementation so as to avoid using a flawed implementation of
+such iterators. This should help be more sure that the implementation is correct
+because it follows the truth of the provided pointers with its own stack as
+backtracking information. */
 static CCC_Tribool
 validate(struct CCC_Adaptive_map const *const t) {
     if (!are_subtrees_valid(

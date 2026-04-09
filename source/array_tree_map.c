@@ -88,8 +88,7 @@ a fixed map or heap allocation.
 
 Use an int because that will force the nodes array to be wary of
 where to start. The nodes are 8 byte aligned but an int is 4. This means the
-nodes need to start after a 4 byte Flat_buffer of padding at end of data array.
-*/
+nodes need to start after 4 byte Flat_buffer of padding at end of data array. */
 static __auto_type const static_data_nodes_parity_layout_test
     = CCC_private_array_tree_map_storage_for((int const[TCAP]){});
 /** Some assumptions in the code assume that parity array is last so ensure that
@@ -235,7 +234,7 @@ static struct CCC_Array_tree_map_node *
 node_at(struct CCC_Array_tree_map const *, size_t);
 static void *data_at(struct CCC_Array_tree_map const *, size_t);
 static struct Query find(struct CCC_Array_tree_map const *, void const *);
-static inline struct CCC_Array_tree_map_handle
+static struct CCC_Array_tree_map_handle
 handle(struct CCC_Array_tree_map const *, void const *);
 static CCC_Handle_range equal_range(
     struct CCC_Array_tree_map const *, void const *, void const *, enum Link
@@ -678,8 +677,6 @@ CCC_array_tree_map_reserve(
     if (!map || !to_add || !allocator || !allocator->allocate) {
         return CCC_RESULT_ARGUMENT_ERROR;
     }
-    /* Once initialized the Flat_buffer always has a size of one for root node.
-     */
     size_t const needed = map->count + to_add + (map->count == 0);
     if (needed <= map->capacity) {
         return CCC_RESULT_OK;
@@ -849,8 +846,6 @@ maybe_allocate_insert(
     void const *const user_type,
     CCC_Allocator const *const allocator
 ) {
-    /* The end sentinel node will always be at 0. This also means once
-       initialized the internal size for implementer is always at least 1. */
     size_t const node = allocate_slot(map, allocator);
     if (!node) {
         return 0;
@@ -1006,15 +1001,12 @@ next(
         return 0;
     }
     assert(!parent_index(map, map->root));
-    /* The node is an internal one that has a sub-tree to explore first. */
     if (branch_index(map, n, traversal)) {
-        /* The goal is to get far left/right ASAP in any traversal. */
         for (n = branch_index(map, n, traversal);
              branch_index(map, n, !traversal);
              n = branch_index(map, n, !traversal)) {}
         return n;
     }
-    /* This is how to return internal nodes on the way back up from a leaf. */
     size_t p = parent_index(map, n);
     for (; p && branch_index(map, p, !traversal) != n;
          n = p, p = parent_index(map, p)) {}
@@ -1253,7 +1245,6 @@ block_at(struct CCC_Array_tree_map const *const map, size_t const i) {
         "shifting to avoid division with power of 2 divisor is only "
         "defined for unsigned types"
     );
-    /* Avoid division because why not? */
     return &map->parity[i >> PARITY_BLOCK_BITS_LOG2];
 }
 
@@ -1851,7 +1842,6 @@ validate(struct CCC_Array_tree_map const *const map) {
     if (!map->capacity) {
         return CCC_TRUE;
     }
-    /* If we haven't lazily initialized we should not check anything. */
     if (map->data && (!map->nodes || !map->parity)) {
         return CCC_TRUE;
     }

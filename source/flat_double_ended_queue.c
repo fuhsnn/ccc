@@ -40,7 +40,7 @@ static size_t decrement(struct CCC_Flat_double_ended_queue const *, size_t);
 static size_t
 distance(struct CCC_Flat_double_ended_queue const *, size_t, size_t);
 static size_t
-rdistance(struct CCC_Flat_double_ended_queue const *, size_t, size_t);
+reverse_distance(struct CCC_Flat_double_ended_queue const *, size_t, size_t);
 static CCC_Result push_front_range(
     struct CCC_Flat_double_ended_queue *,
     CCC_Flat_buffer const *,
@@ -286,7 +286,8 @@ CCC_flat_double_ended_queue_reverse_next(
     size_t const next_i = decrement(queue, cur_i);
     size_t const reverse_begin = last_index(queue);
     if (next_i == reverse_begin
-        || rdistance(queue, next_i, reverse_begin) >= queue->buffer.count) {
+        || reverse_distance(queue, next_i, reverse_begin)
+               >= queue->buffer.count) {
         return NULL;
     }
     return CCC_flat_buffer_at(&queue->buffer, next_i);
@@ -486,7 +487,6 @@ allocate_front(
     CCC_Allocator const *const allocator
 ) {
     CCC_Tribool const full = maybe_resize(queue, 1, allocator) != CCC_RESULT_OK;
-    /* Should have been able to resize. Bad error. */
     if ((full && !queue->buffer.capacity) || (allocator->allocate && full)) {
         return NULL;
     }
@@ -504,7 +504,6 @@ allocate_back(
     CCC_Allocator const *const allocator
 ) {
     CCC_Tribool const full = maybe_resize(queue, 1, allocator) != CCC_RESULT_OK;
-    /* Should have been able to resize. Bad error. */
     if ((full && !queue->buffer.capacity) || (allocator->allocate && full)) {
         return NULL;
     }
@@ -532,8 +531,6 @@ push_back_range(
     if ((full && !queue->buffer.capacity) || (allocator->allocate && full)) {
         return CCC_RESULT_ALLOCATOR_ERROR;
     }
-    /* If a range is too large we can make various simplifications to preserve
-       the final capacity elements. */
     if (range->count >= cap) {
         queue->front = 0;
         (void)memcpy(
@@ -581,8 +578,6 @@ push_front_range(
     if ((full && !queue->buffer.capacity) || (allocator->allocate && full)) {
         return CCC_RESULT_ALLOCATOR_ERROR;
     }
-    /* If a range is too large we can make various simplifications to preserve
-       the final capacity elements. */
     if (range->count >= cap) {
         queue->front = 0;
         (void)memcpy(
@@ -782,10 +777,9 @@ distance(
 /** Returns the rdistance between the current iterator position and the origin
 position. Rdistance is calculated in descending indices, meaning the result is
 the number of backward steps in the Flat_buffer origin would need to take to
-reach iterator, possibly accounting for wrapping around the beginning of buffer.
-*/
+reach iterator, possibly accounting for wrapping around beginning of buffer. */
 static inline size_t
-rdistance(
+reverse_distance(
     struct CCC_Flat_double_ended_queue const *const queue,
     size_t const iterator,
     size_t const origin

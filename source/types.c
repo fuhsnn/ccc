@@ -25,10 +25,10 @@ static char const *const result_messages[CCC_PRIVATE_RESULT_COUNT] = {
       "returned, meaning no valid value can be given to the user.",
     [CCC_RESULT_NO_ALLOCATION_FUNCTION]
     = "A container performed an operation requiring new allocation of "
-      "memory, but no allocation function was provided upon initialization.",
+      "memory, but an empty allocator was provided.",
     [CCC_RESULT_ALLOCATOR_ERROR]
     = "A container performed an operation requiring new allocation of memory, "
-      "but the allocator function provided on initialization failed.",
+      "but the allocator provided to the function failed.",
     [CCC_RESULT_ARGUMENT_ERROR]
     = "A container function received bad arguments such as NULL pointers, out "
       "of range values, or arguments that cannot be processed in the context "
@@ -145,7 +145,7 @@ CCC_handle_range_reverse_end(CCC_Handle_range_reverse const *const range) {
 char const *
 CCC_result_message(CCC_Result const result) {
     if (result >= CCC_PRIVATE_RESULT_COUNT) {
-        return "error: invalid result provided no message exists";
+        return "ERROR: Invalid result provided and no message exists.";
     }
     return result_messages[result];
 }
@@ -175,23 +175,26 @@ char const *
 CCC_entry_status_message(CCC_Entry_status const status) {
     switch (status) {
         case CCC_ENTRY_VACANT:
-            return "vacant with no errors";
+            return "CCC_Entry is vacant with no errors.";
             break;
         case CCC_ENTRY_OCCUPIED:
-            return "occupied and non-NULL with no errors";
+            return "CCC_Entry is occupied and non-NULL with no errors.";
             break;
         case CCC_ENTRY_INSERT_ERROR:
-            return "insert error has occurred or will occur on next insert";
+            return "CCC_Entry insert error has occurred or will occur on next "
+                   "insert.";
             break;
         case CCC_ENTRY_ARGUMENT_ERROR:
-            return "could not proceed due to bad arguments to a function";
+            return "CCC_Entry funciton could not proceed due to bad arguments "
+                   "to a function.";
             break;
         case CCC_ENTRY_NO_UNWRAP:
-            return "unwrap prohibited in order to protect container integrity";
+            return "CCC_Entry shall not unwrap to protect container "
+                   "invariants.";
             break;
         default:
-            return "error: encountered an unknown combination of entry/handle "
-                   "flags";
+            return "ERROR: Encountered an unknown combination of entry/handle "
+                   "flags.";
             break;
     }
 }

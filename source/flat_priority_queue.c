@@ -196,7 +196,6 @@ CCC_flat_priority_queue_erase(
             &priority_queue->comparator
         );
     }
-    /* If the comparison is equal do nothing. Element is in right spot. */
     return CCC_RESULT_OK;
 }
 
@@ -560,7 +559,6 @@ update_fixup(
             &priority_queue->comparator
         );
     }
-    /* If the comparison is equal do nothing. Element is in right spot. */
     return index;
 }
 

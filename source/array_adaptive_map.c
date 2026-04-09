@@ -122,9 +122,6 @@ enum {
     INSERT_ROOT_NODE_COUNT = 2,
 };
 
-/* Flat_buffer allocates before insert. "Empty" has nil 0th slot and one more.
- */
-
 /*==============================  Prototypes   ==============================*/
 
 static size_t splay(struct CCC_Array_adaptive_map *, size_t, void const *);
@@ -570,8 +567,6 @@ CCC_array_adaptive_map_reserve(
     if (!map || !to_add || !allocator || !allocator->allocate) {
         return CCC_RESULT_ARGUMENT_ERROR;
     }
-    /* Once initialized the Flat_buffer always has a size of one for root node.
-     */
     size_t const needed = map->count + to_add + (map->count == 0);
     if (needed <= map->capacity) {
         return CCC_RESULT_OK;
@@ -780,8 +775,6 @@ maybe_allocate_insert(
     void const *const user_type,
     CCC_Allocator const *const allocator
 ) {
-    /* The end sentinel node will always be at 0. This also means once
-       initialized the internal size for implementer is always at least 1. */
     size_t const node = allocate_slot(map, allocator);
     if (!node) {
         return 0;
@@ -1013,15 +1006,12 @@ next(
         return 0;
     }
     assert(!parent_index(map, map->root));
-    /* The node is an internal one that has a sub-tree to explore first. */
     if (branch_index(map, n, traversal)) {
-        /* The goal is to get far left/right ASAP in any traversal. */
         for (n = branch_index(map, n, traversal);
              branch_index(map, n, !traversal);
              n = branch_index(map, n, !traversal)) {}
         return n;
     }
-    /* This is how to return internal nodes on the way back up from a leaf. */
     size_t p = parent_index(map, n);
     for (; p && branch_index(map, p, !traversal) != n;
          n = p, p = parent_index(map, p)) {}

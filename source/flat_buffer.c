@@ -396,7 +396,6 @@ CCC_flat_buffer_reverse_next(
     return (char *)iterator - buffer->sizeof_type;
 }
 
-/** We accept that end may be the address past Flat_buffer capacity. */
 void *
 CCC_flat_buffer_end(CCC_Flat_buffer const *const buffer) {
     if (!buffer || !buffer->data) {

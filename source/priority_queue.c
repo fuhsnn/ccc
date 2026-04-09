@@ -236,12 +236,11 @@ CCC_priority_queue_count(CCC_Priority_queue const *const priority_queue) {
     return (CCC_Count){.count = priority_queue->count};
 }
 
-/* This is a difficult function. Without knowing if this new value is greater
-   or less than the previous we must always perform a delete and reinsert if
-   the value has not broken total order with the parent. It is not sufficient
-   to check if the value has exceeded the value of the first left child as
-   any sibling of that left child may be bigger than or smaller than that
-   left child value. */
+/** This is a difficult function. Without knowing if this new value is greater
+or less than the previous we must always perform a delete and reinsert if the
+value has not broken total order with the parent. It is not sufficient to check
+if the value has exceeded the value of the first left child as any sibling of
+that left child may be bigger than or smaller than that left child value. */
 void *
 CCC_priority_queue_update(
     CCC_Priority_queue *const priority_queue,
@@ -456,7 +455,6 @@ in the paper this one is the back-to-front variant and the only one for which
 the runtime analysis holds identically to the two-pass standard variant. A
 non-trivial example for min heap.
 
-```
 < = next_sibling
 > = prev_sibling
 
@@ -490,7 +488,6 @@ non-trivial example for min heap.
   └/──────┘
 ┌<8>─<9>┐
 └───────┘
-```
 
 Delete min is the slowest operation offered by the priority queue and in
 part contributes to the amortized `o(log(N))` runtime of the decrease key
@@ -556,10 +553,10 @@ pointer is to support faster deletes and decrease key operations.
 < = next_sibling
 > = prev_sibling
 
-         A        A            A
-        ╱        ╱            ╱
-    ┌─<B>─┐  ┌─<C>──<B>─┐ ┌─<D>──<C>──<B>─┐
-    └─────┘  └──────────┘ └───────────────┘
+     A        A            A
+    ╱        ╱            ╱
+┌─<B>─┐  ┌─<C>──<B>─┐ ┌─<D>──<C>──<B>─┐
+└─────┘  └──────────┘ └───────────────┘
 
 Pairing in the delete min phase would then start at B in this example and work
 towards D. That is the oldest to youngest order mentioned in the paper and

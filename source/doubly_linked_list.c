@@ -306,7 +306,6 @@ CCC_doubly_linked_list_extract_range(
         || type_intruder_begin == type_intruder_end) {
         return NULL;
     }
-    /* We extract exclusive ranges [start, end). Step back one. */
     if (type_intruder_end) {
         type_intruder_end = type_intruder_end->previous;
     }
@@ -901,9 +900,6 @@ type_intruder_in(
              : NULL;
 }
 
-/** Calls the user provided three way comparison callback function on the user
-type wrapping the provided intrusive handles. Returns the three way comparison
-result value. */
 static inline CCC_Order
 get_order(
     struct CCC_Doubly_linked_list const *const list,

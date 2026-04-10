@@ -12,7 +12,7 @@ To avoid including tests, samples, and other extraneous files when fetching cont
 include(FetchContent)
 FetchContent_Declare(
   ccc
-  URL https://github.com/agl-alexglopez/ccc/releases/download/v[MAJOR.MINOR.PATCH]/ccc-v[MAJOR.MINOR.PATCH].zip
+  URL https://github.com/SkeletOSS/ccc/releases/download/v[MAJOR.MINOR.PATCH]/ccc-v[MAJOR.MINOR.PATCH].zip
   SYSTEM # Optional flag to use ccc as a system library so that your tooling like clang-tidy ignores ccc.
   #DOWNLOAD_EXTRACT_TIMESTAMP FALSE # CMake may raise a warning to set this. If so, uncomment and set.
 )
@@ -34,7 +34,7 @@ Here is a concrete example with an arbitrary release that is likely out of date.
 include(FetchContent)
 FetchContent_Declare(
   ccc
-  URL https://github.com/agl-alexglopez/ccc/releases/download/v0.72.0/ccc-v0.72.0.zip
+  URL https://github.com/SkeletOSS/ccc/releases/download/v0.72.0/ccc-v0.72.0.zip
   URL_HASH SHA256=9965d8ea2115a40ee7711b07f10ae15b1628825151b233b9cb95f5407425ab74
   SYSTEM # Optional flag to use ccc as a system library so that your tooling like clang-tidy ignores ccc.
   #DOWNLOAD_EXTRACT_TIMESTAMP FALSE # CMake may raise a warning to set this. If so, uncomment and set.
@@ -87,7 +87,7 @@ The Include What You Use (IWYU) comment is helpful if you want to avoid tooling 
 include(FetchContent)
 FetchContent_Declare(
   ccc
-  URL https://github.com/agl-alexglopez/ccc/releases/download/v0.72.0/ccc-v0.72.0.zip
+  URL https://github.com/SkeletOSS/ccc/releases/download/v0.72.0/ccc-v0.72.0.zip
   URL_HASH SHA256=9965d8ea2115a40ee7711b07f10ae15b1628825151b233b9cb95f5407425ab74
   SYSTEM # Optional flag to use ccc as a system library so that your tooling like clang-tidy ignores ccc.
   #DOWNLOAD_EXTRACT_TIMESTAMP FALSE # CMake may raise a warning to set this. If so, uncomment and set.

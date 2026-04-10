@@ -1284,6 +1284,7 @@ If these containers do not fit your needs, here are some other data structure li
 - [STC - Smart Template Containers](https://github.com/stclib/STC)
 - [C Template Library (CTL)](https://github.com/glouw/ctl)
 - [CC: Convenient Containers](https://github.com/JacksonAllan/CC)
+- [STB](https://github.com/nothings/stb/tree/master)
 
 ## Citations
 

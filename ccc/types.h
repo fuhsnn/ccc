@@ -284,38 +284,32 @@ typedef struct {
     void *const context;
 } CCC_Allocator_arguments;
 
-/** @brief An allocation function at the core of all containers.
+/** @brief The function interface for allocating, resizing, and freeing memory.
 
-An allocation function implements the following behavior, when it has been
-passed an allocator context. Context is passed to a container upon its
-initialization and the programmer may choose how to best utilize this reference
-(more on context later).
+The C Container Collection relies on the following behaviors when calling the
+user provided allocator function internally.
 
 - If input is NULL and bytes 0, NULL is returned.
-- If input is NULL with non-zero bytes, new memory is allocated/returned.
+- If input is NULL with non-zero bytes, new memory is allocated and returned.
 - If input is non-NULL it has been previously allocated by the allocator.
 - If input is non-NULL with non-zero size, input is resized to at least bytes
   size. The pointer returned is NULL if resizing fails. Upon success, the
   pointer returned might not be equal to the pointer provided.
 - If input is non-NULL and size is 0, input is freed and NULL is returned.
 
-For example, one solution using the standard library allocator might be
-implemented as follows (context is not needed):
+For example, one allocation interface using the standard library allocator might
+be implemented as follows (context is not needed):
 
 ```
 void *
-std_allocate(CCC_Allocator_arguments const arguments)
-{
-    if (!arguments.input && !arguments.bytes)
-    {
+std_allocate(CCC_Allocator_arguments const arguments) {
+    if (!arguments.input && !arguments.bytes) {
         return NULL;
     }
-    if (!arguments.input)
-    {
+    if (!arguments.input) {
         return malloc(arguments.bytes);
     }
-    if (!arguments.bytes)
-    {
+    if (!arguments.bytes) {
         free(arguments.input);
         return NULL;
     }

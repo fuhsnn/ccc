@@ -112,7 +112,7 @@ static_assert(UINT8_MAX >= BLOCK_BITS, "Bit_count counts all block bits.");
 /*=========================      Prototypes      ============================*/
 
 static size_t block_count_index(size_t);
-static inline Bit_block *block_at(struct CCC_Flat_bitset const *, size_t);
+static Bit_block *block_at(struct CCC_Flat_bitset const *, size_t);
 static void set(Bit_block *, size_t, CCC_Tribool);
 static Bit_block on(size_t);
 static void fix_end(struct CCC_Flat_bitset *);

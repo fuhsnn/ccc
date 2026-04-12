@@ -46,15 +46,15 @@ struct CCC_Flat_priority_queue {
 
 /** @internal */
 size_t CCC_private_flat_priority_queue_bubble_up(
-    struct CCC_Flat_priority_queue *, void *, size_t
+    struct CCC_Flat_priority_queue const *, void *, size_t
 );
 /** @internal */
 void CCC_private_flat_priority_queue_heap_order(
-    struct CCC_Flat_priority_queue *, void *
+    struct CCC_Flat_priority_queue const *, void *
 );
 /** @internal */
 void *CCC_private_flat_priority_queue_update_fixup(
-    struct CCC_Flat_priority_queue *, void *, void *
+    struct CCC_Flat_priority_queue const *, void *, void *
 );
 
 /*======================    Macro Implementations    ========================*/
@@ -233,8 +233,8 @@ to the user. GCC is not so forgiving. */
     update_closure_over_closure_parameter...                                   \
 )                                                                              \
     (__extension__({                                                           \
-        struct CCC_Flat_priority_queue *const private_flat_priority_queue      \
-            = (flat_priority_queue_pointer);                                   \
+        struct CCC_Flat_priority_queue const *const                            \
+            private_flat_priority_queue = (flat_priority_queue_pointer);       \
         typeof(*closure_parameter) *                                           \
             private_flat_priority_queue_updated_element = (closure_parameter); \
         if (private_flat_priority_queue                                        \

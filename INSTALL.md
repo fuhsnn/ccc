@@ -48,6 +48,27 @@ target_link_libraries(main ccc::ccc)
 
 Now, the C Container Collection is part of your project build, allowing you to configure as you see fit. For a more traditional approach read the manual install section below.
 
+### Main Edge Installation
+
+If you wish to track the bleeding edge of the collection, you can track the main release archive. GitHub maintains a zip file of the repository by default at `https://github.com/SkeletOSS/ccc/archive/refs/heads/main.zip`. This archive file respects the current `.gitattributes` file, producing a clean repository snapshot free of unnecessary files, similar to release archives. Change the `FetchContent_Declare` command as follows.
+
+```cmake
+FetchContent_Declare(
+  ccc
+  URL https://github.com/SkeletOSS/ccc/archive/refs/heads/main.zip
+  SYSTEM
+  DOWNLOAD_EXTRACT_TIMESTAMP FALSE
+)
+```
+
+Keep in mind a few points about what you are opting in to if you take this approach.
+
+- Updating the URL is never required. Every time you rebuild your project you get the latest version of the library.
+- The API may break. You are exposed to naming and interface changes before a release finalizes such changes.
+- The main branch is continuously validated by CI with tests, sanitizers, and static analysis. All tests and checks must pass before merging into main so this URL should provide code that can always build and run.
+
+Use this method if you don't care about versioning and want the latest changes. Prefer this method for consuming the library over fetching or cloning the main branch; cloning the main branch directly will download many unneeded files and folders from the repository.
+
 ## Freestanding Environments
 
 The C Container Collection uses the following functions or macros that must be supported by the user on freestanding targets.

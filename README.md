@@ -1075,7 +1075,7 @@ Internally the containers will remember the offsets of the provided elements wit
 
 Rust has solid interfaces for associative containers, largely due to the Entry Interface. In the C Container Collection the core of all associative containers is inspired by the Entry Interface (these versions are found in `ccc/traits.h` but specific names, behaviors, and parameters can be read in each container's header).
 
-- `CCC_Entry(container_pointer, key_pointer...)` - Obtains an entry, a view into an Occupied or Vacant user type stored in the container.
+- `CCC_entry(container_pointer, key_pointer...)` - Obtains an entry, a view into an Occupied or Vacant user type stored in the container.
 - `CCC_and_modify(entry_pointer, mod_fn)` - Modify an occupied entry with a callback.
 - `CCC_and_context_modify(entry_pointer, mod_fn, context_arguments)` - Modify an Occupied entry with a callback that requires context data.
 - `CCC_or_insert(entry_pointer, or_insert_arguments)` - Insert a default key value if Vacant or return the Occupied entry.

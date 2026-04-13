@@ -1076,8 +1076,7 @@ Internally the containers will remember the offsets of the provided elements wit
 Rust has solid interfaces for associative containers, largely due to the Entry Interface. In the C Container Collection the core of all associative containers is inspired by the Entry Interface (these versions are found in `ccc/traits.h` but specific names, behaviors, and parameters can be read in each container's header).
 
 - `CCC_entry(container_pointer, key_pointer...)` - Obtains an entry, a view into an Occupied or Vacant user type stored in the container.
-- `CCC_and_modify(entry_pointer, mod_fn)` - Modify an occupied entry with a callback.
-- `CCC_and_context_modify(entry_pointer, mod_fn, context_arguments)` - Modify an Occupied entry with a callback that requires context data.
+- `CCC_and_modify(entry_pointer, modifier)` - Modify an occupied entry with a callback.
 - `CCC_or_insert(entry_pointer, or_insert_arguments)` - Insert a default key value if Vacant or return the Occupied entry.
 - `CCC_insert_entry(entry_pointer, insert_entry_arguments)` - Invariantly insert a new key value, overwriting an Occupied entry if needed.
 - `CCC_remove_entry(entry_pointer)` - Remove an Occupied entry from the container or do nothing.
@@ -1096,7 +1095,7 @@ typedef struct {
 /* Increment a found Word or insert a default count of 1. */
 CCC_Handle_index const h = array_adaptive_map_or_insert_with(
     array_adaptive_map_and_modify_with(
-        handle_wrap(&hom, &key_ofs), Word * w, { w->cnt++; }
+        array_adaptive_map_handle_wrap(&hom, &key_ofs), Word * w, { w->cnt++; }
     ),
     &std_allocator,
     (Word){.ofs = ofs, .cnt = 1}
@@ -1158,7 +1157,6 @@ Traits, found in `ccc/traits.h`, offer a more succinct way to use shared functio
 Traits cost nothing at runtime but may slightly increase compilation memory use.
 
 ```c
-#define TRAITS_USING_NAMESPACE_CCC
 typedef struct {
     str_ofs ofs;
     int cnt;
@@ -1175,7 +1173,6 @@ CCC_Handle_index const h = or_insert(
 Or the following.
 
 ```c
-#define TRAITS_USING_NAMESPACE_CCC
 typedef struct {
     str_ofs ofs;
     int cnt;

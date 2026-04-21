@@ -155,7 +155,11 @@ string_arena_free(
     if (!a || !allocator || !allocator->allocate) {
         return STRING_ARENA_ARGUMENT_ERROR;
     }
-    free(a->arena);
+    (void)allocator->allocate((CCC_Allocator_arguments){
+        .input = a->arena,
+        .bytes = 0,
+        .context = allocator->context,
+    });
     a->arena = NULL;
     a->next_free_pos = 0;
     a->cap = 0;

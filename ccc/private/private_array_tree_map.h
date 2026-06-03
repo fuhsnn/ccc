@@ -75,11 +75,9 @@ Here is the layout in one contiguous array.
 Consider how this layout saves space. Here is a more traditional approach.
 
 ```
-struct Naive_node
-{
+struct Naive_node {
     size_t branch[2];
-    union
-    {
+    union {
         size_t parent;
         size_t next_free;
     };

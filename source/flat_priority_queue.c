@@ -52,9 +52,9 @@ static void
 heapify(CCC_Flat_buffer const *, void *, CCC_Order, CCC_Comparator const *);
 static size_t bottom_up_reheap(
     CCC_Flat_buffer const *,
+    size_t,
+    size_t,
     void *,
-    size_t,
-    size_t,
     CCC_Order,
     CCC_Comparator const *
 );
@@ -166,9 +166,9 @@ CCC_flat_priority_queue_pop(
     );
     bottom_up_reheap(
         &priority_queue->buffer,
-        temp,
         priority_queue->buffer.count,
         0,
+        temp,
         priority_queue->order,
         &priority_queue->comparator
     );
@@ -213,9 +213,9 @@ CCC_flat_priority_queue_erase(
     } else if (order_res != CCC_ORDER_EQUAL) {
         bottom_up_reheap(
             &priority_queue->buffer,
-            temp,
             priority_queue->buffer.count,
             i,
+            temp,
             priority_queue->order,
             &priority_queue->comparator
         );
@@ -453,7 +453,11 @@ Wegener, Theoretical Computer Science 118 (1993) 81-98.
 This implementation is valuable to the C Container Collection because we rely
 on comparison callback functions over generic data. Therefore, we want to limit
 the number of calls to this callback function. A bottom up heapify
-significantly*/
+significantly cuts down on comparisons by only comparing our element of interest
+to other elements starting at the leaves of the tree. Because most elements in
+a heap are leaves, or near leaves, the likelihood of finding a heap ordered
+position near the bottom is extremely likely. This means we only require a few
+comparisons on average. */
 CCC_Result
 CCC_sort_heapsort(
     CCC_Flat_buffer const *const buffer,
@@ -477,7 +481,7 @@ CCC_sort_heapsort(
         void *const root = at(buffer, 0);
         while (--count) {
             swap(buffer, temp, root, at(buffer, count));
-            bottom_up_reheap(buffer, temp, count, 0, order, comparator);
+            bottom_up_reheap(buffer, count, 0, temp, order, comparator);
         }
     }
     return CCC_RESULT_OK;
@@ -535,7 +539,7 @@ heapify(
 ) {
     size_t i = buffer->count / 2;
     while (i--) {
-        bottom_up_reheap(buffer, temp, buffer->count, i, order, comparator);
+        bottom_up_reheap(buffer, buffer->count, i, temp, order, comparator);
     }
 }
 
@@ -556,9 +560,9 @@ static size_t
 bottom_up_reheap(
 
     CCC_Flat_buffer const *const buffer,
-    void *const temp,
     size_t const count,
     size_t const root,
+    void *const temp,
     CCC_Order const order,
     CCC_Comparator const *const comparator
 ) {
@@ -581,7 +585,10 @@ bottom_up_reheap(
     while (leaf > root && wins(node, at(buffer, leaf), order, comparator)) {
         leaf = (leaf - 1) / 2;
     }
-    /* Procedure interchange-2(root, leaf) */
+    /* Procedure interchange-2(root, leaf). We only have one available swap slot
+       in temp provided to us by the user. Therefore, we cannot save our root
+       element of interest on the stack. We will use a swap chain to slide
+       everything up to fill the vacated root slot. */
     size_t const reheaped_root_index = leaf;
     while (leaf > root) {
         swap(buffer, temp, at(buffer, leaf), at(buffer, root));
@@ -623,9 +630,9 @@ update_fixup(
     if (!index) {
         return bottom_up_reheap(
             &priority_queue->buffer,
-            temp,
             priority_queue->buffer.count,
             0,
+            temp,
             priority_queue->order,
             &priority_queue->comparator
         );
@@ -648,9 +655,9 @@ update_fixup(
     if (parent_order != CCC_ORDER_EQUAL) {
         return bottom_up_reheap(
             &priority_queue->buffer,
-            temp,
             priority_queue->buffer.count,
             index,
+            temp,
             priority_queue->order,
             &priority_queue->comparator
         );

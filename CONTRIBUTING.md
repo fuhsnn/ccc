@@ -365,23 +365,23 @@ Variable length arrays are strictly prohibited. All containers must be designed 
 For example, a flat priority queue is a binary heap that operates by swapping elements. To swap elements we need a temporary space the size of one of the elements in the heap. We are not a header only template-style library so we must find space across an interface boundary. To ensure the user can store exactly as many elements as they wish in the flat array all signatures for functions that require swapping internally ask for a swap slot. For example here is the pop operation signature.
 
 ```c
-CCC_Result CCC_flat_priority_queue_pop(CCC_Flat_priority_queue *q, void *tmp);
+CCC_Result CCC_flat_priority_queue_pop(CCC_Flat_priority_queue *queue, void *temp);
 ```
 
 Other containers may do the same or be able to avoid pushing this space requirement to the user. Here is the ordered map swap entry operation that requires a swap slot.
 
 ```c
 [[nodiscard]] CCC_Entry
-CCC_adaptive_map_swap_entry(CCC_Adaptive_map *m,
-                            CCC_Adaptive_map_node *key_val_output,
-                            CCC_Adaptive_map_node *tmp);
+CCC_adaptive_map_swap_entry(CCC_Adaptive_map *map,
+                            CCC_Adaptive_map_node *key_value_output,
+                            CCC_Adaptive_map_node *temp);
 ```
 
 For the equivalent handle version of this container the space requirement is handled internally.
 
 ```c
 [[nodiscard]] CCC_Handle
-CCC_array_adaptive_swap_handle(CCC_Array_adaptive_map *m, void *key_val_output);
+CCC_array_adaptive_swap_handle(CCC_Array_adaptive_map *map, void *key_value_output);
 ```
 
 The handle version of the container is required to preserve the 0th slot in the array as the nil node so it is able to swap when needed with this extra slot.

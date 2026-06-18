@@ -353,8 +353,12 @@ print_alpha_n(FILE *const f, size_t n, CCC_Allocator const *const allocator) {
         n = count(&map.map).count;
     }
     /* The ordered nature of the map comes in handy for alpha printing. */
+    size_t word = 0;
     foreach_map_word(&map, Word const *const w, {
         printf("%s %d\n", string_arena_at(&a, &w->ofs), w->freq);
+        if (++word >= n) {
+            return;
+        }
     });
 }
 
@@ -372,30 +376,13 @@ print_ralpha_n(FILE *const f, size_t n, CCC_Allocator const *const allocator) {
         n = count(&map.map).count;
     }
     /* The ordered nature of the map comes in handy for reverse iteration. */
+    size_t word = 0;
     foreach_map_word_reverse(&map, Word const *const w, {
         printf("%s %d\n", string_arena_at(&a, &w->ofs), w->freq);
+        if (++word >= n) {
+            return;
+        }
     });
-}
-
-static Word_buffer
-map_to_buffer(Word_map const *const map, CCC_Allocator const *const allocator) {
-    check(!is_empty(&map->map));
-    Word_buffer freqs = {CCC_flat_buffer_with_capacity(
-        Word, *allocator, count(&map->map).count
-    )};
-    size_t const cap = capacity(&freqs.buffer).count;
-    for (CCC_Handle_index iter = begin(&map->map), i = 0;
-         iter != end(&map->map) && i < cap;
-         iter = next(&map->map, iter), ++i) {
-        Word const *const w = array_adaptive_map_at(&map->map, iter);
-        Word const *const pushed = flat_buffer_emplace_back(
-            &freqs.buffer,
-            &(CCC_Allocator){},
-            (Word){.ofs = w->ofs, .freq = w->freq}
-        );
-        check(pushed);
-    }
-    return freqs;
 }
 
 static void
@@ -422,11 +409,31 @@ print_n(
         if (arena_str) {
             printf("%zu. %s %d\n", w + 1, arena_str, i->freq);
         }
-        ++w;
-        if (w >= n) {
+        if (++w >= n) {
             return;
         }
     });
+}
+
+static Word_buffer
+map_to_buffer(Word_map const *const map, CCC_Allocator const *const allocator) {
+    check(!is_empty(&map->map));
+    Word_buffer freqs = {CCC_flat_buffer_with_capacity(
+        Word, *allocator, count(&map->map).count
+    )};
+    size_t const cap = capacity(&freqs.buffer).count;
+    for (CCC_Handle_index iter = begin(&map->map), i = 0;
+         iter != end(&map->map) && i < cap;
+         iter = next(&map->map, iter), ++i) {
+        Word const *const w = array_adaptive_map_at(&map->map, iter);
+        Word const *const pushed = flat_buffer_emplace_back(
+            &freqs.buffer,
+            &(CCC_Allocator){},
+            (Word){.ofs = w->ofs, .freq = w->freq}
+        );
+        check(pushed);
+    }
+    return freqs;
 }
 
 /*=====================    Container Construction     =======================*/

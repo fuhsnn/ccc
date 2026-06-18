@@ -421,18 +421,18 @@ map_to_buffer(Word_map const *const map, CCC_Allocator const *const allocator) {
     Word_buffer freqs = {CCC_flat_buffer_with_capacity(
         Word, *allocator, count(&map->map).count
     )};
-    size_t const cap = capacity(&freqs.buffer).count;
-    for (CCC_Handle_index iter = begin(&map->map), i = 0;
-         iter != end(&map->map) && i < cap;
-         iter = next(&map->map, iter), ++i) {
-        Word const *const w = array_adaptive_map_at(&map->map, iter);
+    size_t cap = capacity(&freqs.buffer).count;
+    foreach_map_word(map, Word const *const w, {
         Word const *const pushed = flat_buffer_emplace_back(
             &freqs.buffer,
             &(CCC_Allocator){},
             (Word){.ofs = w->ofs, .freq = w->freq}
         );
         check(pushed);
-    }
+        if (cap-- == 0) {
+            return freqs;
+        }
+    });
     return freqs;
 }
 

@@ -76,7 +76,7 @@ jobs:
     - name: Build and Test with Clang Mac-ARM
       run: |
         make clean
-        cmake --preset=clang-${{ matrix.build }} -DCCC_FLAT_HASH_MAP_PORTABLE=${{ matrix.portable }} -DCMAKE_C_COMPILER="$PWD/llvm/bin/clang" -G "Ninja" && cmake --build build -j$(nproc) --target ccc tests samples
+        cmake --preset=clang-${{ matrix.build }} -DCCC_BUILD_SPECIALIZED=ON -DCCC_FLAT_HASH_MAP_PORTABLE=${{ matrix.portable }} -DCMAKE_C_COMPILER="$PWD/llvm/bin/clang" -G "Ninja" && cmake --build build -j$(nproc) --target ccc tests samples
         cmake --build build --target install
         make test
 

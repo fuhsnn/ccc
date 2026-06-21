@@ -76,6 +76,6 @@ jobs:
     - name: Build and Test Memory Sanitizers with Clang Linux-x64
       run: |
         make clean
-        cmake --preset=clang-${{ matrix.build }} -DCCC_FLAT_HASH_MAP_PORTABLE=${{ matrix.portable }} -DCMAKE_C_COMPILER="$PWD/llvm/bin/clang" -G "Ninja" && cmake --build build -j$(nproc) --target ccc tests
+        cmake --preset=clang-${{ matrix.build }} -DCCC_BUILD_SPECIALIZED=ON -DCCC_FLAT_HASH_MAP_PORTABLE=${{ matrix.portable }} -DCMAKE_C_COMPILER="$PWD/llvm/bin/clang" -G "Ninja" && cmake --build build -j$(nproc) --target ccc tests
         cmake --build build --target install
         make test

@@ -52,5 +52,5 @@ jobs:
     - name: Build Address and UB Sanitizers with GCC
       run: |
         make clean
-        cmake --preset=gcc-sanitize-${{ matrix.build }} -DCCC_FLAT_HASH_MAP_PORTABLE=${{ matrix.portable }} && cmake --build build -j$(nproc) --target ccc tests
+        cmake --preset=gcc-sanitize-${{ matrix.build }} -DCCC_BUILD_SPECIALIZED=ON -DCCC_FLAT_HASH_MAP_PORTABLE=${{ matrix.portable }} && cmake --build build -j$(nproc) --target ccc tests
         make test

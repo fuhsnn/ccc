@@ -36,6 +36,8 @@ FetchContent_Declare(
   SYSTEM # Optional flag to mark ccc as a system library and silence compiler and tooling warnings.
 )
 FetchContent_MakeAvailable(ccc)
+# Include this line if you want to ignore compiler warnings from the ccc library when compiling your project.
+target_compile_options(ccc PRIVATE "-w")
 ```
 
 To link against the library in the project use the `ccc` namespace.
@@ -56,6 +58,8 @@ FetchContent_Declare(
   SYSTEM # Optional flag to mark ccc as a system library and silence compiler and tooling warnings.
 )
 FetchContent_MakeAvailable(ccc)
+# Include this line if you want to ignore compiler warnings from the ccc library when compiling your project.
+target_compile_options(ccc PRIVATE "-w")
 add_executable(main main.c)
 target_link_libraries(main ccc::ccc)
 ```
@@ -127,6 +131,8 @@ FetchContent_Declare(
   SYSTEM # Optional flag to mark ccc as a system library and silence compiler and tooling warnings.
 )
 FetchContent_MakeAvailable(ccc)
+# Include this line if you want to ignore compiler warnings from the ccc library when compiling your project.
+target_compile_options(ccc PRIVATE "-w")
 
 # New step allowing CCC to find the configuration header.
 target_include_directories(ccc PRIVATE

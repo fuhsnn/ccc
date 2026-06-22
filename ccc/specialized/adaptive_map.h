@@ -1,0 +1,875 @@
+/** @cond
+Copyright 2025 Alexander G. Lopez
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+@endcond */
+/** @file
+@brief The Adaptive Map Interface
+
+An adaptive map offers storage and retrieval of elements sorted on the user
+specified key. Once allocated, this container will not move elements in memory
+making this container assume pointer stability. Because the data structure is
+self-optimizing it is not a suitable map when strict sub-linear runtime bounds
+are needed. Also, searching the map is not a const thread-safe operation as
+indicated by the function signatures. The map is optimized upon every new
+search, attempting to adapt to the usage pattern. In many cases the
+self-optimizing structure of the map can be beneficial when considering
+non-uniform access patterns. In the best case, repeated searches of the same
+value yield an `O(1)` access and many other frequently searched values will be
+obtained in constant time.
+
+To shorten names in the interface, define the following preprocessor directive
+at the top of your file.
+
+```
+#define ADAPTIVE_MAP_USING_NAMESPACE_CCC
+```
+
+All types and functions can then be written without the `CCC_` prefix. */
+#ifndef CCC_ADAPTIVE_MAP_H
+#define CCC_ADAPTIVE_MAP_H
+
+/** @cond */
+#include <stddef.h>
+/** @endcond */
+
+#include "../types.h" /* IWYU pragma: export */
+#include "private/private_adaptive_map.h"
+
+/** @name Container Types
+Types available in the container interface. */
+/**@{*/
+
+/** @brief A self-optimizing data structure offering amortized O(lg N) search,
+insert, and erase and pointer stability.
+@warning it is undefined behavior to access an uninitialized container.
+
+An adaptive map can be initialized on the stack, heap, or data segment at
+runtime or compile time.*/
+typedef struct CCC_Adaptive_map CCC_Adaptive_map;
+
+/** @brief The intrusive element for the user defined struct being stored in the
+map.
+
+Note that if allocation is not permitted, insertions functions accepting this
+type as an argument assume it to exist in pre-allocated memory that will exist
+with the appropriate lifetime and scope for the user's needs; the container does
+not allocate or free in this case. */
+typedef struct CCC_Adaptive_map_node CCC_Adaptive_map_node;
+
+/** @brief A container specific entry used to implement the Entry Interface.
+
+The Entry Interface offers efficient search and subsequent insertion, deletion,
+or value update based on the needs of the user. */
+typedef struct CCC_Adaptive_map_entry CCC_Adaptive_map_entry;
+
+/**@}*/
+
+/** @name Initialization Interface
+Initialize the container with memory, callbacks, and permissions. */
+/**@{*/
+
+/** @brief Initializes the adaptive map at runtime or compile time.
+@param[in] struct_name the user type wrapping the intrusive element.
+@param[in] type_intruder_field_name the name of the intrusive map element field.
+@param[in] type_key_field_name the name of the field in user type used as key.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@return the struct initialized adaptive map for direct assignment. */
+#define CCC_adaptive_map_default(                                              \
+    struct_name, type_intruder_field_name, type_key_field_name, comparator     \
+)                                                                              \
+    CCC_private_adaptive_map_default(                                          \
+        struct_name, type_intruder_field_name, type_key_field_name, comparator \
+    )
+
+/** @brief Initializes the adaptive map at runtime or compile time.
+@param[in] struct_name the user type wrapping the intrusive element.
+@param[in] type_intruder_field_name the name of the intrusive map element field.
+@param[in] type_key_field_name the name of the field in user type used as key.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@return the struct initialized adaptive map for direct assignment. */
+#define CCC_adaptive_map_for(                                                  \
+    struct_name, type_intruder_field_name, type_key_field_name, comparator     \
+)                                                                              \
+    CCC_private_adaptive_map_for(                                              \
+        struct_name, type_intruder_field_name, type_key_field_name, comparator \
+    )
+
+/** @brief Initializes a dynamic adaptive map at runtime.
+@param[in] type_intruder_field_name the name of the intrusive map elem
+field.
+@param[in] type_key_field_name the name of the field in user type used
+as key.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@param[in] allocator the required CCC_Allocator for node allocation.
+@param[in] destructor the optional CCC_Destructor for cleanup in the
+case of a failed allocation, or `&(CCC_Destructor){}`
+@param[in] compound_literal_array the array of user types to insert into the
+map (e.g. (struct My_type[]){ {.key = 1, .val = 1}, {.key = 2, .val = 2}}).
+@return the struct initialized adaptive map for direct assignment or an empty
+map if allocation fails.
+@warning If any node allocation fails while copying in the values in the
+compound literal array of user types, the map is cleared; if a destructor is
+provided, it is called on each node and they are freed using the provided
+allocate function. */
+#define CCC_adaptive_map_from(                                                 \
+    type_intruder_field_name,                                                  \
+    type_key_field_name,                                                       \
+    comparator,                                                                \
+    allocator,                                                                 \
+    destructor,                                                                \
+    compound_literal_array...                                                  \
+)                                                                              \
+    CCC_private_adaptive_map_from(                                             \
+        type_intruder_field_name,                                              \
+        type_key_field_name,                                                   \
+        comparator,                                                            \
+        allocator,                                                             \
+        destructor,                                                            \
+        compound_literal_array                                                 \
+    )
+
+/**@}*/
+
+/**@name Membership Interface
+Test membership or obtain references to stored user types directly. */
+/**@{*/
+
+/** @brief Searches the map for the presence of key.
+@param[in] map the map to be searched.
+@param[in] key pointer to the key matching the key type of the user struct.
+@return true if the struct containing key is stored, false if not. Error if map
+or key is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_adaptive_map_contains(CCC_Adaptive_map *map, void const *key);
+
+/** @brief Returns a reference into the map at entry key.
+@param[in] map the adaptive map to search.
+@param[in] key the key to search matching stored key type.
+@return a view of the map entry if it is present, else NULL. */
+[[nodiscard]] void *
+CCC_adaptive_map_get_key_value(CCC_Adaptive_map *map, void const *key);
+
+/**@}*/
+
+/** @name Entry Interface
+Obtain and operate on container entries for efficient queries when non-trivial
+control flow is needed. */
+/**@{*/
+
+/** @brief Invariantly inserts the key value wrapping type_intruder.
+@param[in] map the pointer to the adaptive map.
+@param[in] type_intruder the handle to the user type wrapping map node.
+@param[in] temp_intruder handle to space for swapping in the old value, if
+Occupied. The user must provide this additional type (e.g. `&(my_type){}`).
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return an entry. If Vacant, no prior element with key existed and the type
+wrapping swap_intruder remains unchanged. If Occupied the old value is written
+to the type wrapping swap_intruder and may be unwrapped to view. If more space
+is needed but allocation fails or has been forbidden, an insert error is set.
+
+Note that this function may write to the struct containing temp_intruder and
+wraps it in an entry to provide information about the old value. */
+[[nodiscard]] CCC_Entry CCC_adaptive_map_swap_entry(
+    CCC_Adaptive_map *map,
+    CCC_Adaptive_map_node *type_intruder,
+    CCC_Adaptive_map_node *temp_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Invariantly inserts the key value wrapping the provided intruder.
+@param[in] map_pointer the pointer to the adaptive map.
+@param[in] type_intruder_pointer the handle to the user type wrapping this
+handle.
+@param[in] temp_intruder_pointer handle to space for swapping in the old value,
+if present. The same user type stored in the map should wrap temp_intruder.
+@param[in] allocator_pointer the CCC_Allocator for node allocation.
+@return a compound literal reference to an entry. If Vacant, no prior element
+with key existed and the type wrapping temp_intruder remains unchanged. If
+Occupied the old value is written to the type wrapping temp_intruder and may be
+unwrapped to view. If more space is needed but allocation fails or has been
+forbidden, an insert error is set.
+
+Note that this function may write to the struct containing temp_intruder and
+wraps it in an entry to provide information about the old value. */
+#define CCC_adaptive_map_swap_entry_wrap(                                      \
+    map_pointer,                                                               \
+    type_intruder_pointer,                                                     \
+    temp_intruder_pointer,                                                     \
+    allocator_pointer...                                                       \
+)                                                                              \
+    &(struct { CCC_Entry private; }){CCC_adaptive_map_swap_entry(              \
+                                         (map_pointer),                        \
+                                         (type_intruder_pointer),              \
+                                         (temp_intruder_pointer),              \
+                                         allocator_pointer                     \
+                                     )}                                        \
+         .private
+
+/** @brief Attempts to insert the key value wrapping type_intruder.
+@param[in] map the pointer to the map.
+@param[in] type_intruder the handle to the user type wrapping map node.
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return an entry. If Occupied, the entry contains a reference to the key value
+user type in the map and may be unwrapped. If Vacant the entry contains a
+reference to the newly inserted entry in the map. If more space is needed but
+allocation fails, an insert error is set. */
+[[nodiscard]] CCC_Entry CCC_adaptive_map_try_insert(
+    CCC_Adaptive_map *map,
+    CCC_Adaptive_map_node *type_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Attempts to insert the key value wrapping type_intruder.
+@param[in] map_pointer the pointer to the map.
+@param[in] type_intruder_pointer the handle to the user type wrapping map
+node.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@return a compound literal reference to an entry. If Occupied, the entry
+contains a reference to the key value user type in the map and may be unwrapped.
+If Vacant the entry contains a reference to the newly inserted entry in the map.
+If more space is needed but allocation fails or has been forbidden, an insert
+error is set. */
+#define CCC_adaptive_map_try_insert_wrap(                                      \
+    map_pointer, type_intruder_pointer, allocator_pointer...                   \
+)                                                                              \
+    &(struct { CCC_Entry private; }){                                          \
+        CCC_adaptive_map_try_insert(                                           \
+            (map_pointer), (type_intruder_pointer), allocator_pointer          \
+        )}                                                                     \
+         .private
+
+/** @brief lazily insert compound_literal_type into the map at key if key is
+absent.
+@param[in] map_pointer a pointer to the map.
+@param[in] key the direct key r-value.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@param[in] compound_literal_type the compound literal specifying the value.
+@return a compound literal reference to the entry of the existing or newly
+inserted value. Occupied indicates the key existed, Vacant indicates the key
+was absent. Unwrapping in any case provides the current value unless an error
+occurs that prevents insertion. An insertion error will flag such a case.
+
+Note that for brevity and convenience the user need not write the key to the
+lazy value compound literal as well. This function ensures the key in the
+compound literal matches the searched key. */
+#define CCC_adaptive_map_try_insert_with(                                      \
+    map_pointer, key, allocator_pointer, compound_literal_type...              \
+)                                                                              \
+    &(struct { CCC_Entry private; }){                                          \
+        CCC_private_adaptive_map_try_insert_with(                              \
+            map_pointer, key, allocator_pointer, compound_literal_type         \
+        )}                                                                     \
+         .private
+
+/** @brief Invariantly inserts or overwrites a user struct into the map.
+@param[in] map a pointer to the flat map.
+@param[in] type_intruder the handle to the wrapping user struct key value.
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return an entry. If Occupied an entry was overwritten by the new key value. If
+Vacant no prior map entry existed.
+
+Note that this function can be used when the old user type is not needed but
+the information regarding its presence is helpful. */
+[[nodiscard]] CCC_Entry CCC_adaptive_map_insert_or_assign(
+    CCC_Adaptive_map *map,
+    CCC_Adaptive_map_node *type_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Invariantly inserts or overwrites a user struct into the map.
+@param[in] map_pointer a pointer to the handle map.
+@param[in] type_pointer a pointer to the user struct key value type.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@return a compound literal reference to a handle. If Occupied a handle was
+overwritten by the new key value. If Vacant no prior map handle existed.
+
+Note that this function can be used when the old user type is not needed but
+the information regarding its presence is helpful. */
+#define CCC_adaptive_map_insert_or_assign_wrap(                                \
+    map_pointer, type_pointer, allocator_pointer...                            \
+)                                                                              \
+    &(struct { CCC_Entry private; }){                                          \
+        CCC_adaptive_map_insert_or_assign(                                     \
+            map_pointer, type_pointer, allocator_pointer                       \
+        )}                                                                     \
+         .private
+
+/** @brief Inserts a new key value pair or overwrites the existing entry.
+@param[in] map_pointer the pointer to the flat map.
+@param[in] key the key to be searched in the map.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@param[in] compound_literal_type the compound literal to insert or use for
+overwrite.
+@return a compound literal reference to the entry of the existing or newly
+inserted value. Occupied indicates the key existed, Vacant indicates the key
+was absent. Unwrapping in any case provides the current value unless an error
+occurs that prevents insertion. An insertion error will flag such a case.
+
+Note that for brevity and convenience the user need not write the key to the
+lazy value compound literal as well. This function ensures the key in the
+compound literal matches the searched key. */
+#define CCC_adaptive_map_insert_or_assign_with(                                \
+    map_pointer, key, allocator_pointer, compound_literal_type...              \
+)                                                                              \
+    &(struct { CCC_Entry private; }){                                          \
+        CCC_private_adaptive_map_insert_or_assign_with(                        \
+            map_pointer, key, allocator_pointer, compound_literal_type         \
+        )}                                                                     \
+         .private
+
+/** @brief Removes the key value in the map storing the old value, if present,
+in the struct containing type_output_intruder provided by the user.
+@param[in] map the pointer to the adaptive map.
+@param[out] type_output_intruder the handle to the user type wrapping map node.
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return the removed entry. If Occupied it may be unwrapped to obtain the old key
+value pair. If Vacant the key value pair was not stored in the map. If bad input
+is provided an input error is set.
+
+Note that this function may write to the struct containing the second parameter
+and wraps it in an entry to provide information about the old value.
+
+If allocation has been prohibited upon initialization then the entry returned
+contains the previously stored user type, if any, and nothing is written to
+the type_output_intruder. It is then the user's responsibility to manage their
+previously stored memory as they see fit. */
+[[nodiscard]] CCC_Entry CCC_adaptive_map_remove_key_value(
+    CCC_Adaptive_map *map,
+    CCC_Adaptive_map_node *type_output_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Removes the key value in the map storing the old value, if present,
+in the struct containing type_output_intruder provided by the user.
+@param[in] map_pointer the pointer to the adaptive map.
+@param[out] type_output_intruder_pointer the handle to the user type wrapping
+map node.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@return a compound literal reference to the removed entry. If Occupied it may be
+unwrapped to obtain the old key value pair. If Vacant the key value pair was not
+stored in the map. If bad input is provided an input error is set.
+
+Note that this function may write to the struct containing the second parameter
+and wraps it in an entry to provide information about the old value.
+
+If allocation has been prohibited upon initialization then the entry returned
+contains the previously stored user type, if any, and nothing is written to
+the type_output_intruder. It is then the user's responsibility to manage their
+previously stored memory as they see fit. */
+#define CCC_adaptive_map_remove_key_value_wrap(                                \
+    map_pointer, type_output_intruder_pointer, allocator_pointer...            \
+)                                                                              \
+    &(struct { CCC_Entry private; }){                                          \
+        CCC_adaptive_map_remove_key_value(                                     \
+            (map_pointer), (type_output_intruder_pointer), allocator_pointer   \
+        )}                                                                     \
+         .private
+
+/** @brief Obtains an entry for the provided key in the map for future use.
+@param[in] map the map to be searched.
+@param[in] key the key used to search the map matching the stored key type.
+@return a specialized entry for use with other functions in the Entry Interface.
+@warning the contents of an entry should not be examined or modified. Use the
+provided functions, only.
+
+An entry is a search result that provides either an Occupied or Vacant entry
+in the map. An occupied entry signifies that the search was successful. A
+Vacant entry means the search was not successful but a handle is gained to
+where in the map such an element should be inserted.
+
+An entry is rarely useful on its own. It should be passed in a functional style
+to subsequent calls in the Entry Interface. */
+[[nodiscard]] CCC_Adaptive_map_entry
+CCC_adaptive_map_entry(CCC_Adaptive_map *map, void const *key);
+
+/** @brief Obtains an entry for the provided key in the map for future use.
+@param[in] map_pointer the map to be searched.
+@param[in] key_pointer the key used to search the map matching the stored key
+type.
+@return a compound literal reference to a specialized entry for use with other
+functions in the Entry Interface.
+@warning the contents of an entry should not be examined or modified. Use the
+provided functions, only.
+
+An entry is a search result that provides either an Occupied or Vacant entry
+in the map. An occupied entry signifies that the search was successful. A
+Vacant entry means the search was not successful but a handle is gained to
+where in the map such an element should be inserted.
+
+An entry is rarely useful on its own. It should be passed in a functional style
+to subsequent calls in the Entry Interface. */
+#define CCC_adaptive_map_entry_wrap(map_pointer, key_pointer...)               \
+    &(struct { CCC_Adaptive_map_entry private; }){                             \
+        CCC_adaptive_map_entry((map_pointer), key_pointer)}                    \
+         .private
+
+/** @brief Modifies the provided entry if it is Occupied.
+@param[in] entry the entry obtained from an entry function or macro.
+@param[in] modifier a CCC_Modifier to operate on an Occupied entry.
+@return the updated entry if it was Occupied or the unmodified vacant entry. */
+[[nodiscard]] CCC_Adaptive_map_entry *CCC_adaptive_map_and_modify(
+    CCC_Adaptive_map_entry *entry, CCC_Modifier const *modifier
+);
+
+/** @brief Modify an Occupied entry with a closure over user type.
+@param[in] adaptive_map_entry_pointer a pointer to the obtained entry.
+@param[in] closure_parameter the type and name, for example `My_type * e` or
+`My_type const * e`, with which to interpret an occupied entry.
+@param[in] closure_over_closure_parameter the code to be run on the reference to
+user typed named pointer, if Occupied. This may be a semicolon separated list of
+statements to execute or a section of code wrapped in braces {code here} which
+may be preferred for formatting.
+@return a compound literal reference to the modified entry if it was occupied
+or a vacant entry if it was vacant.
+
+```
+#define ADAPTIVE_MAP_USING_NAMESPACE_CCC
+// Increment the count if found otherwise do nothing.
+Adaptive_map_entry *entry =
+    adaptive_map_and_modify_with(
+        entry_wrap(&map, &k),
+        Word * e,
+        e->cnt++;
+    );
+// Increment the count if found otherwise insert a default value.
+Word *w =
+    adaptive_map_or_insert_with(
+        adaptive_map_and_modify_with(
+            entry_wrap(&map, &k),
+            Word * e,
+            { e->cnt++; }
+        ),
+        (Word){.key = k, .cnt = 1}
+    );
+```
+
+Note that any code written is only evaluated if the entry is Occupied and the
+container can deliver the named user type. This means any function calls are
+lazily evaluated in the closure scope. */
+#define CCC_adaptive_map_and_modify_with(                                      \
+    adaptive_map_entry_pointer,                                                \
+    closure_parameter,                                                         \
+    closure_over_closure_parameter...                                          \
+)                                                                              \
+    &(struct { CCC_Adaptive_map_entry private; }){                             \
+        CCC_private_adaptive_map_and_modify_with(                              \
+            adaptive_map_entry_pointer,                                        \
+            closure_parameter,                                                 \
+            closure_over_closure_parameter                                     \
+        )}                                                                     \
+         .private
+
+/** @brief Inserts the struct with handle type_intruder if the entry is Vacant.
+@param[in] entry the entry obtained via function or macro call.
+@param[in] type_intruder the handle to the struct to be inserted to a Vacant
+entry.
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return a pointer to entry in the map invariantly. NULL on error.
+
+Because this functions takes an entry and inserts if it is Vacant, the only
+reason NULL shall be returned is when an insertion error occurs, usually due to
+a user struct allocation failure.
+
+If no allocation is permitted, this function assumes the user struct wrapping
+type_intruder has been allocated with the appropriate lifetime and scope by the
+user. */
+[[nodiscard]] void *CCC_adaptive_map_or_insert(
+    CCC_Adaptive_map_entry const *entry,
+    CCC_Adaptive_map_node *type_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Lazily insert the desired key value into the entry if it is Vacant.
+@param[in] adaptive_map_entry_pointer a pointer to the obtained entry.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@param[in] type_compound_literal the compound literal to construct in place if
+the entry is Vacant.
+@return a reference to the unwrapped user type in the entry, either the
+unmodified reference if the entry was Occupied or the newly inserted element
+if the entry was Vacant. NULL is returned if resizing is required but fails or
+is not allowed.
+
+Note that if the compound literal uses any function calls to generate values
+or other data, such functions will not be called if the entry is Occupied. */
+#define CCC_adaptive_map_or_insert_with(                                       \
+    adaptive_map_entry_pointer, allocator_pointer, type_compound_literal...    \
+)                                                                              \
+    CCC_private_adaptive_map_or_insert_with(                                   \
+        adaptive_map_entry_pointer, allocator_pointer, type_compound_literal   \
+    )
+
+/** @brief Inserts the provided entry invariantly.
+@param[in] entry the entry returned from a call obtaining an entry.
+@param[in] type_intruder a handle to the struct the user intends to insert.
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return a pointer to the inserted element or NULL upon allocation failure.
+
+This method can be used when the old value in the map does not need to
+be preserved. See the regular insert method if the old value is of interest. */
+[[nodiscard]] void *CCC_adaptive_map_insert_entry(
+    CCC_Adaptive_map_entry const *entry,
+    CCC_Adaptive_map_node *type_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Write the contents of the compound literal type_compound_literal to a
+node.
+@param[in] adaptive_map_entry_pointer a pointer to the obtained entry.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@param[in] type_compound_literal the compound literal to write to a new slot.
+@return a reference to the newly inserted or overwritten user type. NULL is
+returned if allocation failed or is not allowed when required. */
+#define CCC_adaptive_map_insert_entry_with(                                    \
+    adaptive_map_entry_pointer, allocator_pointer, type_compound_literal...    \
+)                                                                              \
+    CCC_private_adaptive_map_insert_entry_with(                                \
+        adaptive_map_entry_pointer, allocator_pointer, type_compound_literal   \
+    )
+
+/** @brief Remove the entry from the map if Occupied.
+@param[in] entry a pointer to the map entry.
+@param[in] allocator the CCC_Allocator for node allocation if needed.
+@return an entry containing NULL or a reference to the old entry. If Occupied an
+entry in the map existed and was removed. If Vacant, no prior entry existed to
+be removed.
+
+Note that if allocation is permitted the old element is freed and the entry
+will contain a NULL reference. If allocation is prohibited the entry can be
+unwrapped to obtain the old user struct stored in the map and the user may
+free or use as needed. */
+[[nodiscard]] CCC_Entry CCC_adaptive_map_remove_entry(
+    CCC_Adaptive_map_entry *entry, CCC_Allocator const *allocator
+);
+
+/** @brief Remove the entry from the map if Occupied.
+@param[in] adaptive_map_entry_pointer a pointer to the map entry.
+@param[in] allocator_pointer the CCC_Allocator for node allocation if needed.
+@return a compound literal reference to an entry containing NULL or a reference
+to the old entry. If Occupied an entry in the map existed and was removed. If
+Vacant, no prior entry existed to be removed.
+
+Note that if allocation is permitted the old element is freed and the entry
+will contain a NULL reference. If allocation is prohibited the entry can be
+unwrapped to obtain the old user struct stored in the map and the user may
+free or use as needed. */
+#define CCC_adaptive_map_remove_entry_wrap(                                    \
+    adaptive_map_entry_pointer, allocator_pointer...                           \
+)                                                                              \
+    &(struct { CCC_Entry private; }){                                          \
+        CCC_adaptive_map_remove_entry(                                         \
+            (adaptive_map_entry_pointer), allocator_pointer                    \
+        )}                                                                     \
+         .private
+
+/** @brief Unwraps the provided entry to obtain a view into the map element.
+@param[in] entry the entry from a query to the map via function or macro.
+@return a view into the table entry if one is present, or NULL. */
+[[nodiscard]] void *
+CCC_adaptive_map_unwrap(CCC_Adaptive_map_entry const *entry);
+
+/** @brief Returns the Vacant or Occupied status of the entry.
+@param[in] entry the entry from a query to the map via function or macro.
+@return true if the entry is occupied, false if not. Error if entry is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_adaptive_map_occupied(CCC_Adaptive_map_entry const *entry);
+
+/** @brief Provides the status of the entry should an insertion follow.
+@param[in] entry the entry from a query to the table via function or macro.
+@return true if an entry obtained from an insertion attempt failed to insert
+due to an allocation failure when allocation success was expected. Error if
+entry is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_adaptive_map_insert_error(CCC_Adaptive_map_entry const *entry);
+
+/** @brief Obtain the entry status from a container entry.
+@param[in] entry a pointer to the entry.
+@return the status stored in the entry after the required action on the
+container completes. If entry is NULL an entry input error is returned so ensure
+e is non-NULL to avoid an inaccurate status returned.
+
+Note that this function can be useful for debugging or if more detailed
+messages are needed for logging purposes. See CCC_entry_status_message() in
+ccc/types.h for more information on detailed entry statuses. */
+[[nodiscard]] CCC_Entry_status
+CCC_adaptive_map_entry_status(CCC_Adaptive_map_entry const *entry);
+
+/**@}*/
+
+/** @name Iterator Interface
+Obtain and manage iterators over the container. */
+/**@{*/
+
+/** @brief Return an iterable range of values from [begin_key, end_key).
+Amortized O(lg N).
+@param[in] map a pointer to the map.
+@param[in] begin_key a pointer to the key intended as the start of the range.
+@param[in] end_key a pointer to the key intended as the end of the range.
+@return a range containing the first element NOT LESS than the begin_key and
+the first element GREATER than end_key.
+
+Note that due to the variety of values that can be returned in the range, using
+the provided range iteration functions from types.h is recommended for example:
+
+```
+for (struct Val *i = range_begin(&range);
+     i != range_end(&range);
+     i = next(&map, &i->type_intruder))
+{}
+```
+
+This avoids any possible errors in handling an end range element that is in the
+map versus the end map sentinel. */
+[[nodiscard]] CCC_Range CCC_adaptive_map_equal_range(
+    CCC_Adaptive_map *map, void const *begin_key, void const *end_key
+);
+
+/** @brief Returns a compound literal reference to the desired range. Amortized
+O(lg N).
+@param[in] map_pointer a pointer to the map.
+@param[in] begin_and_end_key_pointers two pointers, one to the start of the
+range and a second to the end of the range.
+@return a compound literal reference to the produced range associated with the
+enclosing scope. This reference is always non-NULL. */
+#define CCC_adaptive_map_equal_range_wrap(                                     \
+    map_pointer, begin_and_end_key_pointers...                                 \
+)                                                                              \
+    &(struct { CCC_Range private; }){                                          \
+        CCC_adaptive_map_equal_range(map_pointer, begin_and_end_key_pointers)} \
+         .private
+
+/** @brief Return an iterable range_reverse of values from [begin_key, end_key).
+Amortized O(lg N).
+@param[in] map a pointer to the map.
+@param[in] reverse_begin_key a pointer to the key intended as the start of the
+range_reverse.
+@param[in] reverse_end_key a pointer to the key intended as the end of the
+range_reverse.
+@return a range_reverse containing the first element NOT GREATER than the
+begin_key and the first element LESS than reverse_end_key.
+
+Note that due to the variety of values that can be returned in the
+range_reverse, using the provided range_reverse iteration functions from types.h
+is recommended for example:
+
+```
+for (struct Val *i = range_reverse_begin(&range_reverse);
+     i != range_reverse_end(&range_reverse);
+     i = reverse_next(&map, &i->type_intruder))
+{}
+```
+
+This avoids any possible errors in handling an reverse_end range_reverse element
+that is in the map versus the end map sentinel. */
+[[nodiscard]] CCC_Range_reverse CCC_adaptive_map_equal_range_reverse(
+    CCC_Adaptive_map *map,
+    void const *reverse_begin_key,
+    void const *reverse_end_key
+);
+
+/** @brief Returns a compound literal reference to the desired range_reverse.
+Amortized O(lg N).
+@param[in] map_pointer a pointer to the map.
+@param[in] reverse_begin_and_reverse_end_key_pointers two pointers, one to the
+start of the range_reverse and a second to the end of the range_reverse.
+@return a compound literal reference to the produced range_reverse associated
+with the enclosing scope. This reference is always non-NULL. */
+#define CCC_adaptive_map_equal_range_reverse_wrap(                             \
+    map_pointer, reverse_begin_and_reverse_end_key_pointers...                 \
+)                                                                              \
+    &(struct { CCC_Range_reverse private; }){                                  \
+        CCC_adaptive_map_equal_range_reverse(                                  \
+            map_pointer, reverse_begin_and_reverse_end_key_pointers            \
+        )}                                                                     \
+         .private
+
+/** @brief Return the start of an inorder traversal of the map. Amortized
+O(lg N).
+@param[in] map a pointer to the map.
+@return the oldest minimum element of the map. */
+[[nodiscard]] void *CCC_adaptive_map_begin(CCC_Adaptive_map const *map);
+
+/** @brief Return the start of a reverse inorder traversal of the map.
+Amortized O(lg N).
+@param[in] map a pointer to the map.
+@return the oldest maximum element of the map. */
+[[nodiscard]] void *CCC_adaptive_map_reverse_begin(CCC_Adaptive_map const *map);
+
+/** @brief Return the next element in an inorder traversal of the map. O(1).
+@param[in] map a pointer to the map.
+@param[in] iterator_intruder a pointer to the intrusive map element of the
+current iterator.
+@return the next user type stored in the map in an inorder traversal. */
+[[nodiscard]] void *CCC_adaptive_map_next(
+    CCC_Adaptive_map const *map, CCC_Adaptive_map_node const *iterator_intruder
+);
+
+/** @brief Return the reverse_next element in a reverse inorder traversal of the
+map. O(1).
+@param[in] map a pointer to the map.
+@param[in] iterator_intruder a pointer to the intrusive map element of the
+current iterator.
+@return the reverse_next user type stored in the map in a reverse inorder
+traversal. */
+[[nodiscard]] void *CCC_adaptive_map_reverse_next(
+    CCC_Adaptive_map const *map, CCC_Adaptive_map_node const *iterator_intruder
+);
+
+/** @brief Return the end of an inorder traversal of the map. O(1).
+@param[in] map a pointer to the map.
+@return the newest maximum element of the map. */
+[[nodiscard]] void *CCC_adaptive_map_end(CCC_Adaptive_map const *map);
+
+/** @brief Return the reverse_end of a reverse inorder traversal of the map.
+O(1).
+@param[in] map a pointer to the map.
+@return the newest minimum element of the map. */
+[[nodiscard]] void *CCC_adaptive_map_reverse_end(CCC_Adaptive_map const *map);
+
+/**@}*/
+
+/** @name Deallocation Interface
+Destroy the container. */
+/**@{*/
+
+/** @brief Pops every element from the map calling destructor if destructor is
+non-NULL. O(N).
+@param[in] map a pointer to the map.
+@param[in] destructor an optional CCC_Destructor for elements before free.
+@param[in] allocator an optional CCC_Allocator to free elements.
+@return an input error if map points to NULL otherwise OK.
+
+Note that if the map has been given an allocator, the destructor will be called
+on each element before it uses the provided allocator to free the element.
+Therefore, the destructor should not free the element or a double free will
+occur. */
+CCC_Result CCC_adaptive_map_clear(
+    CCC_Adaptive_map *map,
+    CCC_Destructor const *destructor,
+    CCC_Allocator const *allocator
+);
+
+/**@}*/
+
+/** @name State Interface
+Obtain the container state. */
+/**@{*/
+
+/** @brief Returns the size status of the map.
+@param[in] map the map.
+@return true if empty else false. Error if map is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_adaptive_map_is_empty(CCC_Adaptive_map const *map);
+
+/** @brief Returns the count of occupied map nodes.
+@param[in] map the map.
+@return the size or an argument error is set if map is NULL. */
+[[nodiscard]] CCC_Count CCC_adaptive_map_count(CCC_Adaptive_map const *map);
+
+/** @brief Validation of invariants for the map.
+@param[in] map the map to validate.
+@return true if all invariants hold, false if corruption occurs. Error if map is
+NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_adaptive_map_validate(CCC_Adaptive_map const *map);
+
+/**@}*/
+
+/** Define this preprocessor directive if shorter names are helpful. Ensure
+ no namespace clashes occur before shortening. */
+#ifdef ADAPTIVE_MAP_USING_NAMESPACE_CCC
+/* NOLINTBEGIN(readability-identifier-naming) */
+typedef CCC_Adaptive_map_node Adaptive_map_node;
+typedef CCC_Adaptive_map Adaptive_map;
+typedef CCC_Adaptive_map_entry Adaptive_map_entry;
+#    define adaptive_map_default(arguments...)                                 \
+        CCC_adaptive_map_default(arguments)
+#    define adaptive_map_for(arguments...) CCC_adaptive_map_for(arguments)
+#    define adaptive_map_from(arguments...) CCC_adaptive_map_from(arguments)
+#    define adaptive_map_and_modify_with(arguments...)                         \
+        CCC_adaptive_map_and_modify_with(arguments)
+#    define adaptive_map_or_insert_with(arguments...)                          \
+        CCC_adaptive_map_or_insert_with(arguments)
+#    define adaptive_map_insert_entry_with(arguments...)                       \
+        CCC_adaptive_map_insert_entry_with(arguments)
+#    define adaptive_map_try_insert_wrap(arguments...)                         \
+        CCC_adaptive_map_try_insert_wrap(arguments)
+#    define adaptive_map_try_insert_with(arguments...)                         \
+        CCC_adaptive_map_try_insert_with(arguments)
+#    define adaptive_map_insert_or_assign(arguments...)                        \
+        CCC_adaptive_map_insert_or_assign(arguments)
+#    define adaptive_map_insert_or_assign_wrap(arguments...)                   \
+        CCC_adaptive_map_insert_or_assign_wrap(arguments)
+#    define adaptive_map_insert_or_assign_with(arguments...)                   \
+        CCC_adaptive_map_insert_or_assign_with(arguments)
+#    define adaptive_map_swap_entry_wrap(arguments...)                         \
+        CCC_adaptive_map_swap_entry_wrap(arguments)
+#    define adaptive_map_remove_key_value_wrap(arguments...)                   \
+        CCC_adaptive_map_remove_key_value_wrap(arguments)
+#    define adaptive_map_remove_entry_wrap(arguments...)                       \
+        CCC_adaptive_map_remove_entry_wrap(arguments)
+#    define adaptive_map_entry_wrap(arguments...)                              \
+        CCC_adaptive_map_entry_wrap(arguments)
+#    define adaptive_map_and_modify(arguments...)                              \
+        CCC_adaptive_map_and_modify(arguments)
+#    define adaptive_map_and_modify_wrap(arguments...)                         \
+        CCC_adaptive_map_and_modify_wrap(arguments)
+#    define adaptive_map_contains(arguments...)                                \
+        CCC_adaptive_map_contains(arguments)
+#    define adaptive_map_get_key_value(arguments...)                           \
+        CCC_adaptive_map_get_key_value(arguments)
+#    define adaptive_map_get_mut(arguments...)                                 \
+        CCC_adaptive_map_get_mut(arguments)
+#    define adaptive_map_swap_entry(arguments...)                              \
+        CCC_adaptive_map_swap_entry(arguments)
+#    define adaptive_map_remove_key_value(arguments...)                        \
+        CCC_adaptive_map_remove_key_value(arguments)
+#    define adaptive_map_entry(arguments...) CCC_adaptive_map_entry(arguments)
+#    define adaptive_map_remove_entry(arguments...)                            \
+        CCC_adaptive_map_remove_entry(arguments)
+#    define adaptive_map_or_insert(arguments...)                               \
+        CCC_adaptive_map_or_insert(arguments)
+#    define adaptive_map_insert_entry(arguments...)                            \
+        CCC_adaptive_map_insert_entry(arguments)
+#    define adaptive_map_unwrap(arguments...) CCC_adaptive_map_unwrap(arguments)
+#    define adaptive_map_unwrap_mut(arguments...)                              \
+        CCC_adaptive_map_unwrap_mut(arguments)
+#    define adaptive_map_begin(arguments...) CCC_adaptive_map_begin(arguments)
+#    define adaptive_map_next(arguments...) CCC_adaptive_map_next(arguments)
+#    define adaptive_map_reverse_begin(arguments...)                           \
+        CCC_adaptive_map_reverse_begin(arguments)
+#    define adaptive_map_reverse_next(arguments...)                            \
+        CCC_adaptive_map_reverse_next(arguments)
+#    define adaptive_map_equal_range(arguments...)                             \
+        CCC_adaptive_map_equal_range(arguments)
+#    define adaptive_map_equal_range_wrap(arguments...)                        \
+        CCC_adaptive_map_equal_range_wrap(arguments)
+#    define adaptive_map_equal_range_reverse(arguments...)                     \
+        CCC_adaptive_map_equal_range_reverse(arguments)
+#    define adaptive_map_equal_range_reverse_wrap(arguments...)                \
+        CCC_adaptive_map_equal_range_reverse_wrap(arguments)
+#    define adaptive_map_end(arguments...) CCC_adaptive_map_end(arguments)
+#    define adaptive_map_reverse_end(arguments...)                             \
+        CCC_adaptive_map_reverse_end(arguments)
+#    define adaptive_map_count(arguments...) CCC_adaptive_map_count(arguments)
+#    define adaptive_map_is_empty(arguments...)                                \
+        CCC_adaptive_map_is_empty(arguments)
+#    define adaptive_map_clear(arguments...) CCC_adaptive_map_clear(arguments)
+#    define adaptive_map_validate(arguments...)                                \
+        CCC_adaptive_map_validate(arguments)
+#    define adaptive_map_entry_status(arguments...)                            \
+        CCC_adaptive_map_entry_status(arguments)
+/* NOLINTEND(readability-identifier-naming) */
+#endif
+
+#endif /* CCC_ADAPTIVE_MAP_H */

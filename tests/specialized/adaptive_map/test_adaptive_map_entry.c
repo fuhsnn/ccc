@@ -1,0 +1,1268 @@
+/** This file dedicated to testing the Entry Interface. The interface has
+grown significantly requiring a dedicated file to test all code paths in all
+the entry functions. */
+#include <assert.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+#define ADAPTIVE_MAP_USING_NAMESPACE_CCC
+#define TRAITS_USING_NAMESPACE_CCC
+
+#include "adaptive_map_utility.h"
+#include "ccc/specialized/adaptive_map.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
+#include "checkers.h"
+#include "utility/stack_allocator.h"
+
+static inline struct Val
+val(int const val) {
+    return (struct Val){.val = val};
+}
+
+static inline struct Val
+idval(int const id, int const val) {
+    return (struct Val){.key = id, .val = val};
+}
+
+static inline void
+plus(CCC_Arguments const t) {
+    ((struct Val *)t.type)->val++;
+}
+
+static inline void
+pluscontext(CCC_Arguments const t) {
+    ((struct Val *)t.type)->val += *(int *)t.context;
+}
+
+/* Every test should have three uses of each tested function: one when the
+   container is empty, one when the container has a few elements and one when
+   the container has many elements. If the function has different behavior
+   given an element being present or absent, each possibility should be
+   tested at each of those three stages. */
+
+/* Fills the container with n elements with id and val starting at the provided
+   value and incrementing by 1 until n is reached. Assumes id_and_val are
+   not present by key in the table and all subsequent inserts are unique. */
+check_static_begin(
+    fill_n,
+    Adaptive_map *const om,
+    size_t const n,
+    int id_and_val,
+    CCC_Allocator const *const allocator
+) {
+    for (size_t i = 0; i < n; ++i, ++id_and_val) {
+        CCC_Entry ent = swap_entry(
+            om,
+            &(struct Val){.key = id_and_val, .val = id_and_val}.elem,
+            &(struct Val){}.elem,
+            allocator
+        );
+        check(insert_error(&ent), false);
+        check(occupied(&ent), false);
+        check(validate(om), true);
+    }
+    check_end();
+}
+
+/* Internally there is some maintenance to perform when swapping values for
+   the user on insert. Leave this test here to always catch this. */
+check_static_begin(adaptive_map_test_validate) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[3]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    check(CCC_adaptive_map_occupied(NULL), CCC_TRIBOOL_ERROR);
+    check(
+        adaptive_map_entry_status(adaptive_map_entry_wrap(NULL, &(int){})),
+        CCC_ENTRY_ARGUMENT_ERROR
+    );
+    check(
+        adaptive_map_entry_status(adaptive_map_entry_wrap(&om, NULL)),
+        CCC_ENTRY_ARGUMENT_ERROR
+    );
+    check(
+        CCC_entry_status(adaptive_map_swap_entry_wrap(
+            NULL, &(struct Val){}.elem, &(struct Val){}.elem, &(CCC_Allocator){}
+        )),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    check(
+        CCC_entry_status(adaptive_map_swap_entry_wrap(
+            &om, NULL, &(struct Val){}.elem, &(CCC_Allocator){}
+        )),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    check(
+        CCC_entry_status(adaptive_map_swap_entry_wrap(
+            &om, &(struct Val){}.elem, NULL, &(CCC_Allocator){}
+        )),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    check(
+        CCC_entry_status(adaptive_map_swap_entry_wrap(
+            &om, &(struct Val){}.elem, &(struct Val){}.elem, NULL
+        )),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    CCC_Entry ent = swap_entry(
+        &om,
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, 1);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_insert) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Entry ent = swap_entry(
+        &om,
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, 1);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = i, .val = i}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, i + 2);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = i, .val = i}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = i, .val = i}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, i + 2);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = i, .val = i}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_remove_key_value) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Entry ent = CCC_remove_key_value(
+        &om, &(struct Val){.key = -1, .val = -1}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, 0);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, 1);
+    ent = CCC_remove_key_value(
+        &om, &(struct Val){.key = -1, .val = -1}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, 0);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = CCC_remove_key_value(
+        &om, &(struct Val){.key = i, .val = i}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(count(&om).count, i);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = i, .val = i}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, i + 1);
+    ent = CCC_remove_key_value(
+        &om, &(struct Val){.key = i, .val = i}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, i);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = CCC_remove_key_value(
+        &om, &(struct Val){.key = i, .val = i}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(count(&om).count, i);
+    ent = swap_entry(
+        &om,
+        &(struct Val){.key = i, .val = i}.elem,
+        &(struct Val){}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent), NULL);
+    check(count(&om).count, i + 1);
+    ent = CCC_remove_key_value(
+        &om, &(struct Val){.key = i, .val = i}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, i);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_try_insert) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    check(
+        CCC_entry_status(
+            adaptive_map_try_insert_wrap(NULL, &(struct Val){}.elem, &allocator)
+        ),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    check(
+        CCC_entry_status(adaptive_map_try_insert_wrap(&om, NULL, &allocator)),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    check(
+        CCC_entry_status(
+            adaptive_map_try_insert_wrap(&om, &(struct Val){}.elem, NULL)
+        ),
+        CCC_RESULT_ARGUMENT_ERROR
+    );
+    int size = 30;
+    CCC_Entry ent
+        = try_insert(&om, &(struct Val){.key = -1, .val = -1}.elem, &allocator);
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) != NULL, true);
+    check(count(&om).count, 1);
+    ent = try_insert(&om, &(struct Val){.key = -1, .val = -1}.elem, &allocator);
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = try_insert(&om, &(struct Val){.key = i, .val = i}.elem, &allocator);
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = try_insert(&om, &(struct Val){.key = i, .val = i}.elem, &allocator);
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = try_insert(&om, &(struct Val){.key = i, .val = i}.elem, &allocator);
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = try_insert(&om, &(struct Val){.key = i, .val = i}.elem, &allocator);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_try_insert_with) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Entry *ent = adaptive_map_try_insert_with(&om, -1, &allocator, val(-1));
+    check(validate(&om), true);
+    check(occupied(ent), false);
+    check(unwrap(ent) != NULL, true);
+    check(count(&om).count, 1);
+    ent = adaptive_map_try_insert_with(&om, -1, &allocator, val(-1));
+    check(validate(&om), true);
+    check(occupied(ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = adaptive_map_try_insert_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    check(occupied(ent), false);
+    check(unwrap(ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = adaptive_map_try_insert_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    check(occupied(ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = adaptive_map_try_insert_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    check(occupied(ent), false);
+    check(unwrap(ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = adaptive_map_try_insert_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    check(occupied(ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, i);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_insert_or_assign) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Entry ent = insert_or_assign(
+        &om, &(struct Val){.key = -1, .val = -1}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) != NULL, true);
+    check(count(&om).count, 1);
+    ent = insert_or_assign(
+        &om, &(struct Val){.key = -1, .val = -2}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -2);
+    check(v->key, -1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = insert_or_assign(
+        &om, &(struct Val){.key = i, .val = i}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = insert_or_assign(
+        &om, &(struct Val){.key = i, .val = i + 1}.elem, &allocator
+    );
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = insert_or_assign(
+        &om, &(struct Val){.key = i, .val = i}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = insert_or_assign(
+        &om, &(struct Val){.key = i, .val = i + 1}.elem, &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_insert_or_assign_with) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Entry *ent
+        = adaptive_map_insert_or_assign_with(&om, -1, &allocator, val(-1));
+    check(validate(&om), true);
+    check(occupied(ent), false);
+    check(unwrap(ent) != NULL, true);
+    check(count(&om).count, 1);
+    ent = adaptive_map_insert_or_assign_with(&om, -1, &allocator, val(-2));
+    check(validate(&om), true);
+    check(occupied(ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, -2);
+    check(v->key, -1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    check(occupied(ent), false);
+    check(unwrap(ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i + 1));
+    check(occupied(ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    check(occupied(ent), false);
+    check(unwrap(ent) != NULL, true);
+    check(count(&om).count, i + 2);
+    ent = adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i + 1));
+    check(validate(&om), true);
+    check(occupied(ent), true);
+    check(count(&om).count, i + 2);
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_entry_and_modify) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Adaptive_map_entry ent = entry(&om, &(int){-1});
+    check(validate(&om), true);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, 0);
+    ent = *and_modify(&ent, &(CCC_Modifier){.modify = plus});
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, 0);
+    (void)adaptive_map_insert_or_assign_with(&om, -1, &allocator, val(-1));
+    check(validate(&om), true);
+    ent = entry(&om, &(int){-1});
+    check(occupied(&ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    ent = *and_modify(&ent, &(CCC_Modifier){.modify = plus});
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, 0);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = entry(&om, &i);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, i + 1);
+    (void)adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    ent = entry(&om, &i);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    ent = *and_modify(&ent, &(CCC_Modifier){.modify = plus});
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = entry(&om, &i);
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, i + 1);
+    (void)adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    ent = entry(&om, &i);
+    check(occupied(&ent), true);
+    check(count(&om).count, i + 2);
+    ent = *and_modify(&ent, &(CCC_Modifier){.modify = plus});
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_entry_and_context_modify) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    int context = 1;
+    CCC_Adaptive_map_entry ent = entry(&om, &(int){-1});
+    ent = *and_modify(
+        &ent,
+        &(CCC_Modifier){
+            .modify = pluscontext,
+            .context = &context,
+        }
+    );
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, 0);
+    (void)adaptive_map_insert_or_assign_with(&om, -1, &allocator, val(-1));
+    check(validate(&om), true);
+    ent = entry(&om, &(int){-1});
+    check(occupied(&ent), true);
+    check(count(&om).count, 1);
+    struct Val *v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    ent = *and_modify(
+        &ent,
+        &(CCC_Modifier){
+            .modify = pluscontext,
+            .context = &context,
+        }
+    );
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, 0);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = entry(&om, &i);
+    ent = *and_modify(
+        &ent,
+        &(CCC_Modifier){
+            .modify = pluscontext,
+            .context = &context,
+        }
+    );
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, i + 1);
+    (void)adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    ent = entry(&om, &i);
+    ent = *and_modify(
+        &ent,
+        &(CCC_Modifier){
+            .modify = pluscontext,
+            .context = &context,
+        }
+    );
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check(count(&om).count, i + 2);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = entry(&om, &i);
+    ent = *and_modify(
+        &ent,
+        &(CCC_Modifier){
+            .modify = pluscontext,
+            .context = &context,
+        }
+    );
+    check(occupied(&ent), false);
+    check(unwrap(&ent) == NULL, true);
+    check(count(&om).count, i + 1);
+    (void)adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    ent = entry(&om, &i);
+    ent = *and_modify(
+        &ent,
+        &(CCC_Modifier){
+            .modify = pluscontext,
+            .context = &context,
+        }
+    );
+    v = unwrap(&ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check(count(&om).count, i + 2);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_entry_and_modify_with) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    CCC_Adaptive_map_entry *ent = adaptive_map_entry_wrap(&om, &(int){-1});
+    ent = adaptive_map_and_modify_with(ent, struct Val * e, { e->val++; });
+    check(count(&om).count, 0);
+    check(occupied(ent), false);
+    check(unwrap(ent) == NULL, true);
+    check(count(&om).count, 0);
+    (void)adaptive_map_insert_or_assign_with(&om, -1, &allocator, val(-1));
+    check(validate(&om), true);
+    ent = adaptive_map_entry_wrap(&om, &(int){-1});
+    struct Val *v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, -1);
+    check(v->key, -1);
+    ent = adaptive_map_and_modify_with(ent, struct Val * e, { e->val++; });
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, 0);
+    check(count(&om).count, 1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    ent = adaptive_map_entry_wrap(&om, &i);
+    ent = adaptive_map_and_modify_with(ent, struct Val * e, { e->val++; });
+    check(occupied(ent), false);
+    check(unwrap(ent) == NULL, true);
+    check(count(&om).count, i + 1);
+    (void)adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    ent = adaptive_map_entry_wrap(&om, &i);
+    ent = adaptive_map_and_modify_with(ent, struct Val * e, { e->val++; });
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check(count(&om).count, i + 2);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    ent = adaptive_map_entry_wrap(&om, &i);
+    ent = adaptive_map_and_modify_with(ent, struct Val * e, { e->val++; });
+    check(occupied(ent), false);
+    check(unwrap(ent) == NULL, true);
+    check(count(&om).count, i + 1);
+    (void)adaptive_map_insert_or_assign_with(&om, i, &allocator, val(i));
+    check(validate(&om), true);
+    ent = adaptive_map_entry_wrap(&om, &i);
+    ent = adaptive_map_and_modify_with(ent, struct Val * e, { e->val++; });
+    v = unwrap(ent);
+    check(v != NULL, true);
+    check(v->val, i + 1);
+    check(v->key, i);
+    check(count(&om).count, i + 2);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_or_insert) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    check(
+        adaptive_map_or_insert(NULL, &(struct Val){}.elem, &(CCC_Allocator){}),
+        NULL
+    );
+    check(
+        adaptive_map_or_insert(
+            &(Adaptive_map_entry){}, NULL, &(CCC_Allocator){}
+        ),
+        NULL
+    );
+    check(
+        adaptive_map_or_insert(
+            &(Adaptive_map_entry){}, &(struct Val){}.elem, NULL
+        ),
+        NULL
+    );
+    check(adaptive_map_and_modify(NULL, &(CCC_Modifier){}), NULL);
+    check(adaptive_map_and_modify(&(Adaptive_map_entry){}, NULL), NULL);
+    check(CCC_adaptive_map_insert_error(NULL), CCC_TRIBOOL_ERROR);
+    check(
+        CCC_adaptive_map_insert_error(adaptive_map_entry_wrap(&om, &(int){-1})),
+        CCC_FALSE
+    );
+    int size = 30;
+    struct Val *v = or_insert(
+        adaptive_map_entry_wrap(&om, &(int){-1}),
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &(int){-1}),
+        &(struct Val){.key = -1, .val = -2}.elem,
+        &allocator
+    );
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i + 1}.elem,
+        &allocator
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i + 1}.elem,
+        &allocator
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_or_insert_with) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    struct Val *v = adaptive_map_or_insert_with(
+        adaptive_map_entry_wrap(&om, &(int){-1}), &allocator, idval(-1, -1)
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    v = adaptive_map_or_insert_with(
+        adaptive_map_entry_wrap(&om, &(int){-1}), &allocator, idval(-1, -2)
+    );
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    v = adaptive_map_or_insert_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i)
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = adaptive_map_or_insert_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i + 1)
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    v = adaptive_map_or_insert_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i)
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = adaptive_map_or_insert_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i + 1)
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_insert_entry) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    check(
+        adaptive_map_insert_entry(
+            NULL, &(struct Val){}.elem, &(CCC_Allocator){}
+        ),
+        NULL
+    );
+    check(
+        adaptive_map_insert_entry(
+            &(Adaptive_map_entry){}, NULL, &(CCC_Allocator){}
+        ),
+        NULL
+    );
+    check(
+        adaptive_map_insert_entry(
+            &(Adaptive_map_entry){}, &(struct Val){}.elem, NULL
+        ),
+        NULL
+    );
+    int size = 30;
+    struct Val *v = insert_entry(
+        adaptive_map_entry_wrap(&om, &(int){-1}),
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    v = insert_entry(
+        adaptive_map_entry_wrap(&om, &(int){-1}),
+        &(struct Val){.key = -1, .val = -2}.elem,
+        &allocator
+    );
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -2);
+    check(count(&om).count, 1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    v = insert_entry(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = insert_entry(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i + 1}.elem,
+        &allocator
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i + 1);
+    check(count(&om).count, i + 2);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    v = insert_entry(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = insert_entry(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i + 1}.elem,
+        &allocator
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i + 1);
+    check(count(&om).count, i + 2);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_insert_entry_with) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    struct Val *v = adaptive_map_insert_entry_with(
+        adaptive_map_entry_wrap(&om, &(int){-1}), &allocator, idval(-1, -1)
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    v = adaptive_map_insert_entry_with(
+        adaptive_map_entry_wrap(&om, &(int){-1}), &allocator, idval(-1, -2)
+    );
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -2);
+    check(count(&om).count, 1);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    v = adaptive_map_insert_entry_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i)
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = adaptive_map_insert_entry_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i + 1)
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i + 1);
+    check(count(&om).count, i + 2);
+    ++i;
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    v = adaptive_map_insert_entry_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i)
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 2);
+    v = adaptive_map_insert_entry_with(
+        adaptive_map_entry_wrap(&om, &i), &allocator, idval(i, i + 1)
+    );
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i + 1);
+    check(count(&om).count, i + 2);
+    check_end();
+}
+
+check_static_begin(adaptive_map_test_remove_entry) {
+    CCC_Allocator const allocator = {
+        .allocate = stack_allocator_allocate,
+        .context = &stack_allocator_for((struct Val[35]){}),
+    };
+    Adaptive_map om = adaptive_map_for(
+        struct Val, elem, key, (CCC_Key_comparator){.compare = id_order}
+    );
+    int size = 30;
+    struct Val *v = or_insert(
+        adaptive_map_entry_wrap(&om, &(int){-1}),
+        &(struct Val){.key = -1, .val = -1}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, -1);
+    check(v->val, -1);
+    check(count(&om).count, 1);
+    CCC_Entry *e = adaptive_map_remove_entry_wrap(
+        adaptive_map_entry_wrap(&om, &(int){-1}), &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(e), true);
+    check(count(&om).count, 0);
+    int i = 0;
+
+    check(fill_n(&om, (size_t)size / 2, i, &allocator), CHECK_PASS);
+
+    i += (size / 2);
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 1);
+    e = adaptive_map_remove_entry_wrap(
+        adaptive_map_entry_wrap(&om, &i), &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(e), true);
+    check(count(&om).count, i);
+
+    check(fill_n(&om, (size_t)size - (size_t)i, i, &allocator), CHECK_PASS);
+
+    i = size;
+    v = or_insert(
+        adaptive_map_entry_wrap(&om, &i),
+        &(struct Val){.key = i, .val = i}.elem,
+        &allocator
+    );
+    check(validate(&om), true);
+    check(v != NULL, true);
+    check(v->key, i);
+    check(v->val, i);
+    check(count(&om).count, i + 1);
+    e = adaptive_map_remove_entry_wrap(
+        adaptive_map_entry_wrap(&om, &i), &allocator
+    );
+    check(validate(&om), true);
+    check(occupied(e), true);
+    check(count(&om).count, i);
+    check_end();
+}
+
+int
+main(void) {
+    return check_run(
+        adaptive_map_test_insert(),
+        adaptive_map_test_remove_key_value(),
+        adaptive_map_test_validate(),
+        adaptive_map_test_try_insert(),
+        adaptive_map_test_try_insert_with(),
+        adaptive_map_test_insert_or_assign(),
+        adaptive_map_test_insert_or_assign_with(),
+        adaptive_map_test_entry_and_modify(),
+        adaptive_map_test_entry_and_context_modify(),
+        adaptive_map_test_entry_and_modify_with(),
+        adaptive_map_test_or_insert(),
+        adaptive_map_test_or_insert_with(),
+        adaptive_map_test_insert_entry(),
+        adaptive_map_test_insert_entry_with(),
+        adaptive_map_test_remove_entry()
+    );
+}

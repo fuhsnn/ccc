@@ -1,0 +1,1171 @@
+/** @cond
+Copyright 2025 Alexander G. Lopez
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+@endcond */
+/** @file
+@brief The Array Adaptive Map Interface
+
+A array adaptive map is a contiguously stored map offering storage and
+retrieval by key. Because the data structure is self-optimizing it is not a
+suitable map in a realtime environment where strict runtime bounds are needed.
+Also, searching the map is not a const thread-safe operation as indicated by the
+function signatures. The map is optimized upon every new search in attempt to
+adapt to the usage pattern. In many cases the self-optimizing structure
+of the map may be beneficial when considering non-uniform access patterns. In
+the best case, repeated searches of the same value yield an `O(1)` access and
+many other frequently searched values will remain close to the root of the map.
+
+The array version of the adaptive map promises contiguous storage and random
+access if needed with handles. Handles remain valid until an element is removed
+even if other elements are inserted, other elements are removed, or resizing
+occurs. All elements in the map track their relationships to one another via
+indices in the array. Therefore, this data structure can be relocated, copied,
+serialized, or written to disk and all internal data structure references will
+remain valid. Insertion may invoke an O(N) operation if resizing occurs.
+Finally, if allocation is prohibited upon initialization, and the user provides
+a capacity of `C` upon initialization, one slot will be used for a sentinel
+node. The user available capacity is `C - 1`.
+
+All interface functions accept `void *` references to either the key or the full
+type the user is storing in the map. Therefore, it is important for the user to
+be aware if they are passing a reference to the key or the full type depending
+on the function requirements.
+
+To use the map as a set, when only keys are needed, wrap a type in a struct or
+union. For example a set of `int` could be represented by creating a type
+`struct My_int {int key;};`. All interface functions can then be used normally.
+
+To shorten names in the interface, define the following preprocessor directive
+at the top of your file.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+```
+
+All types and functions can then be written without the `CCC_` prefix. */
+#ifndef CCC_ARRAY_ADAPTIVE_MAP_H
+#define CCC_ARRAY_ADAPTIVE_MAP_H
+
+/** @cond */
+#include <stddef.h>
+/** @endcond */
+
+#include "../types.h" /* IWYU pragma: export */
+#include "private/private_array_adaptive_map.h"
+
+/** @name Container Types
+Types available in the container interface. */
+/**@{*/
+
+/** @brief A self-optimizing data structure offering amortized O(lg N) search,
+insert, and erase.
+@warning it is undefined behavior to access an uninitialized container.
+
+An array adaptive map can be initialized on the stack, heap, or data segment at
+runtime or compile time.*/
+typedef struct CCC_Array_adaptive_map CCC_Array_adaptive_map;
+
+/** @brief A container specific handle used to implement the Handle Interface.
+
+The Handle Interface offers efficient search and subsequent insertion, deletion,
+or value update based on the needs of the user. */
+typedef struct CCC_Array_adaptive_map_handle CCC_Array_adaptive_map_handle;
+
+/**@}*/
+
+/** @name Initialization Interface
+Initialize the container with memory, callbacks, and permissions. */
+/**@{*/
+
+/** @brief Provides the fixed size type layout and underlying storage for a
+fixed size map. Helpful if the size in bytes of the underlying storage block is
+needed.
+@param[in] user_type_compound_literal_array a compound literal array of the type
+around which the map will be built. Must be a power of 2 capacity array.
+@param[in] optional_storage_specifier an optional storage duration specifier if
+different from the default for the map at the declared location.
+@note Size of the underlying storage can be obtained via the following macro
+`sizeof(CCC_array_adaptive_map_storage_for(...))`, as needed.
+@warning See CCC_array_adaptive_map_with_allocator_storage() if you wish to
+allocate a fixed size map dynamically at runtime due to strict memory
+requirements. A `CCC_Allocator` must be provided to that interface function to
+complete the allocation.
+
+If the user wishes to dynamically allocate a fixed size map at runtime this
+macro can be used to obtain the total bytes of the underlying storage as needed.
+See CCC_array_adaptive_map_with_allocator_storage() for how to dynamically
+allocate a fixed size map. This is not a common use case. */
+#define CCC_array_adaptive_map_storage_for(                                    \
+    user_type_compound_literal_array, optional_storage_specifier...            \
+)                                                                              \
+    CCC_private_array_adaptive_map_storage_for(                                \
+        user_type_compound_literal_array, optional_storage_specifier           \
+    )
+
+/** @brief Initializes the map at runtime or compile time.
+@param[in] type_name the name of the user type stored in the map.
+@param[in] type_key_field the name of the field in user type used as key.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@return the struct initialized adaptive map for direct assignment. */
+#define CCC_array_adaptive_map_default(                                        \
+    type_name, type_key_field, comparator...                                   \
+)                                                                              \
+    CCC_private_array_adaptive_map_default(                                    \
+        type_name, type_key_field, comparator                                  \
+    )
+
+/** @brief Initializes the map at runtime or compile time.
+@param[in] type_name the name of the user type stored in the map.
+@param[in] type_key_field the name of the field in user type used as key.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@param[in] capacity the capacity at data_pointer or 0.
+@param[in] memory_pointer a pointer to the contiguous user types or NULL.
+@return the struct initialized adaptive map for direct assignment. */
+#define CCC_array_adaptive_map_for(                                            \
+    type_name, type_key_field, comparator, capacity, memory_pointer            \
+)                                                                              \
+    CCC_private_array_adaptive_map_for(                                        \
+        type_name, type_key_field, comparator, capacity, memory_pointer        \
+    )
+
+/** @brief Initialize a dynamic map at runtime from an initializer list.
+@param[in] type_key_field the field of the struct used for key storage.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@param[in] allocator the required CCC_Allocator for resizing.
+@param[in] optional_capacity optionally specify the capacity of the map if
+different from the size of the compound literal array initializer. If the
+capacity is greater than the size of the compound literal array initializer, it
+is respected and the capacity is reserved. If the capacity is less than the size
+of the compound array initializer, the compound literal array initializer size
+is set as the capacity. Therefore, 0 is valid if one is not concerned with the
+size of the underlying reservation.
+@param[in] type_compound_literal_array a list of key value pairs of the type
+intended to be stored in the map, using array compound literal initialization
+syntax (e.g `(struct my_type[]){{.k = 0, .v 0}, {.k = 1, .v = 1}}`).
+@return the  map directly initialized on the right hand side of the equality
+operator (i.e. CCC_Array_adaptive_map map = CCC_array_adaptive_map_from(...);)
+@warning An allocation function is required. This initializer is only available
+for dynamic maps.
+@warning When duplicate keys appear in the initializer list, the last occurrence
+replaces earlier ones by value (all fields are overwritten).
+@warning If initialization fails all subsequent queries, insertions, or
+removals will indicate the error: either memory related or lack of an
+allocation function provided.
+
+Initialize a dynamic map at run time.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+struct Val
+{
+    int key;
+    int val;
+};
+int
+main(void)
+{
+    Array_adaptive_map static_map = array_adaptive_map_from(
+        key,
+        val_key_comparator,
+        std_allocator,
+        0,
+        (struct Val[]) {
+            {.key = 1, .val = 1},
+            {.key = 2, .val = 2},
+            {.key = 3, .val = 3},
+        },
+    );
+    return 0;
+}
+```
+
+Only dynamic maps may be initialized this way due the inability of the map
+map to protect its invariants from user error at compile time. */
+#define CCC_array_adaptive_map_from(                                           \
+    type_key_field,                                                            \
+    comparator,                                                                \
+    allocator,                                                                 \
+    optional_capacity,                                                         \
+    type_compound_literal_array...                                             \
+)                                                                              \
+    CCC_private_array_adaptive_map_from(                                       \
+        type_key_field,                                                        \
+        comparator,                                                            \
+        allocator,                                                             \
+        optional_capacity,                                                     \
+        type_compound_literal_array                                            \
+    )
+
+/** @brief Initialize a dynamic map at runtime with at least the specified
+capacity.
+@param[in] type_name the name of the type being stored in the map.
+@param[in] type_key_field the field of the struct used for key storage.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@param[in] allocator the required CCC_Allocator for resizing.
+@param[in] capacity the desired capacity for the map. A capacity of 0 results
+in an argument error and is a no-op after the map is initialized empty.
+@return the map directly initialized on the right hand side of the equality
+operator.
+@warning An allocator is required.
+@warning If initialization fails all subsequent queries, insertions, or
+removals will indicate the error: either memory related or lack of an
+allocation function provided.
+
+Initialize a dynamic map at run time. This example requires no context
+data for initialization.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+struct Val
+{
+    int key;
+    int val;
+};
+int
+main(void)
+{
+    Array_adaptive_map map = array_adaptive_map_with_capacity(
+        struct Val,
+        key,
+        val_key_comparator,
+        std_allocator,
+        4096
+    );
+    return 0;
+}
+```
+
+Only dynamic maps may be initialized this way as it simply combines the steps
+of initialization and reservation. */
+#define CCC_array_adaptive_map_with_capacity(                                  \
+    type_name, type_key_field, comparator, allocator, capacity                 \
+)                                                                              \
+    CCC_private_array_adaptive_map_with_capacity(                              \
+        type_name, type_key_field, comparator, allocator, capacity             \
+    )
+
+/** @brief Initialize a fixed map at compile or runtime from any user chosen
+type with no allocation permission or context.
+@param[in] type_key_field the field of the struct used for key storage.
+@param[in] comparator the CCC_Key_comparator for key comparison.
+@param[in] compound_literal the compound literal array of a type provided by the
+user around which the struct of array backing storage for the map will be built.
+@param[in] optional_storage_specifier lifetime specifier of the backing struct
+of array storage, such as static, for the fixed size map in the scope at which
+it is allocated or declared.
+@return the map directly initialized on the right hand side of the equality
+operator.
+
+Initialize a fixed map.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+struct Val
+{
+    int key;
+    int val;
+};
+static Array_adaptive_map map = array_adaptive_map_with_storage(
+    key,
+    val_key_comparator,
+    (struct Val[4096]){}
+);
+```
+
+This can help eliminate boilerplate in initializers. */
+#define CCC_array_adaptive_map_with_storage(                                   \
+    type_key_field,                                                            \
+    comparator,                                                                \
+    compound_literal,                                                          \
+    optional_storage_specifier...                                              \
+)                                                                              \
+    CCC_private_array_adaptive_map_with_storage(                               \
+        type_key_field,                                                        \
+        comparator,                                                            \
+        compound_literal,                                                      \
+        optional_storage_specifier                                             \
+    )
+
+/** Obtain a fixed size map dynamically at runtime from an allocator.
+@param[in] key_field the field of the struct used for key storage.
+@param[in] comparator a CCC_Key_comparator that configures the key comparator
+function and context for comparison.
+@param[in] allocator a CCC_Allocator to use in order to obtain memory.
+@param[in] compound_literal the compound literal array of a type provided by the
+user around which the struct of arrays backing storage for the map is built.
+@return the map initialized on the right hand side of equality operator. If
+dynamic allocation is successful the map is initialized with the specified
+capacity. If allocation fails the map will have a capacity of 0 and NULL
+internal pointers. */
+#define CCC_array_adaptive_map_with_allocator_storage(                         \
+    key_field, comparator, allocator, compound_literal                         \
+)                                                                              \
+    CCC_private_array_adaptive_map_with_allocator_storage(                     \
+        key_field, comparator, allocator, compound_literal                     \
+    )
+
+/** @brief Copy the map at source to destination.
+@param[in] destination the initialized destination for the copy of the source
+map.
+@param[in] source the initialized source of the map.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+@return the result of the copy operation. If the destination capacity is less
+than the source capacity and no allocator is provided an input error is
+returned. If resizing is required and resizing of destination fails a memory
+error is returned.
+@note destination must have capacity greater than or equal to source. If
+destination capacity is less than source, an allocator must be provided.
+
+Note that there are two ways to copy data from source to destination: provide
+sufficient memory and pass `&(CCC_Allocator){}`, or allow the allocator to
+perform allocation for the copy.
+
+Manual memory management with no allocation function provided.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+struct Val
+{
+    int key;
+    int val;
+};
+static Array_tree_map source = array_adaptive_map_with_storage(
+    struct Val,
+    key,
+    val_key_comparator,
+    &(struct Val[64]){}
+);
+insert_rand_vals(&source, &(CCC_Allocator){});
+static Array_tree_map destination = array_adaptive_map_with_storage(
+    struct Val,
+    key,
+    val_key_comparator,
+    &(struct Val[64]){}
+);
+CCC_Result res
+    = array_adaptive_map_copy(&destination, &source, &(CCC_Allocator){});
+```
+
+The above requires destination capacity be greater than or equal to source
+capacity. Here is memory management handed over to the copy function.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+struct Val
+{
+    int key;
+    int val;
+};
+static Array_adaptive_map source = array_adaptive_map_default(
+    struct Val,
+    key,
+    val_key_comparator
+);
+insert_rand_vals(&source, &std_allocator);
+static Array_adaptive_map destination = array_adaptive_map_for(
+    struct Val,
+    key,
+    key_order,
+    val_key_comparator
+);
+CCC_Result res
+    = array_adaptive_map_copy(&destination, &source, &std_allocator);
+```
+
+These options allow users to stay consistent across containers with their
+memory management strategies. */
+CCC_Result CCC_array_adaptive_map_copy(
+    CCC_Array_adaptive_map *destination,
+    CCC_Array_adaptive_map const *source,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Reserves space for at least to_add more elements.
+@param[in] map a pointer to the array adaptive map.
+@param[in] to_add the number of elements to add to the current size.
+@param[in] allocator the required CCC_Allocator for resizing.
+@return the result of the reservation. OK if successful, otherwise an error
+status is returned. */
+CCC_Result CCC_array_adaptive_map_reserve(
+    CCC_Array_adaptive_map *map, size_t to_add, CCC_Allocator const *allocator
+);
+
+/**@}*/
+
+/**@name Membership Interface
+Test membership or obtain references to stored user types directly. */
+/**@{*/
+
+/** @brief Returns a reference to the user data at the provided handle.
+@param[in] map a pointer to the map.
+@param[in] index the stable handle obtained by the user.
+@return a pointer to the user type stored at the specified handle or NULL if
+an out of range handle or handle representing no data is provided.
+@warning this function can only check if the handle value is in range. If a
+handle represents a slot that has been taken by a new element because the
+old one has been removed that new element data will be returned.
+@warning do not try to access data in the table manually with a handle.
+Always use this provided interface function when a reference to data is
+needed. */
+[[nodiscard]] void *CCC_array_adaptive_map_at(
+    CCC_Array_adaptive_map const *map, CCC_Handle_index index
+);
+
+/** @brief Returns a reference to the user type in the table at the handle.
+@param[in] map_pointer a pointer to the map.
+@param[in] type_name name of the user type stored in each slot of the map.
+@param[in] array_index the index handle obtained from previous map operations.
+@return a reference to the handle at handle in the map as the type the user has
+stored in the map. */
+#define CCC_array_adaptive_map_as(map_pointer, type_name, array_index...)      \
+    CCC_private_array_adaptive_map_as(map_pointer, type_name, array_index)
+
+/** @brief Searches the map for the presence of key.
+@param[in] map the map to be searched.
+@param[in] key pointer to the key matching the key type of the user struct.
+@return true if the struct containing key is stored, false if not. Error if
+array_adaptive_map or key is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_array_adaptive_map_contains(CCC_Array_adaptive_map *map, void const *key);
+
+/** @brief Returns a reference into the map at handle key.
+@param[in] map the adaptive map to search.
+@param[in] key the key to search matching stored key type.
+@return a view of the map handle if it is present, else NULL. */
+[[nodiscard]] CCC_Handle_index CCC_array_adaptive_map_get_key_value(
+    CCC_Array_adaptive_map *map, void const *key
+);
+
+/**@}*/
+
+/** @name Handle Interface
+Obtain and operate on container handles for efficient queries when non-trivial
+control flow is needed. */
+/**@{*/
+
+/** @brief Invariantly inserts the key value type.
+@param[in] map the pointer to the adaptive map.
+@param[out] type_output the handle to the user type map elem.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+@return a handle. If Vacant, no prior element with key existed and the type
+type_output remains unchanged. If Occupied the old value is written to the type
+type_output and may be unwrapped to view. If more space is needed but allocation
+fails or has been forbidden, an insert error is set.
+
+Note that this function may write to type_output and wraps it in a handle to
+provide information about the old value. */
+[[nodiscard]] CCC_Handle CCC_array_adaptive_map_swap_handle(
+    CCC_Array_adaptive_map *map,
+    void *type_output,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Invariantly inserts the key value type.
+@param[in] map_pointer the pointer to the adaptive map.
+@param[out] type_output_pointer the handle to the user type map elem.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@return a compound literal reference to a handle. If Vacant, no prior element
+with key existed and the type type_output remains unchanged. If Occupied the old
+value is written to the type type_output and may be unwrapped to view. If more
+space is needed but allocation fails or has been forbidden, an insert error is
+set.
+
+Note that this function may write to type_output and wraps it in a handle to
+provide information about the old value. */
+#define CCC_array_adaptive_map_swap_handle_wrap(                               \
+    map_pointer, type_output_pointer, allocator_pointer...                     \
+)                                                                              \
+    &(struct { CCC_Handle private; }){                                         \
+        CCC_array_adaptive_map_swap_handle(                                    \
+            (map_pointer), (type_output_pointer), allocator_pointer            \
+        )}                                                                     \
+         .private
+
+/** @brief Attempts to insert the key value type.
+@param[in] map the pointer to the map.
+@param[in] type the handle to the user type map elem.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+@return a handle. If Occupied, the handle contains a reference to the key value
+user type in the map and may be unwrapped. If Vacant the handle contains a
+reference to the newly inserted handle in the map. If more space is needed but
+allocation fails, an insert error is set. */
+[[nodiscard]] CCC_Handle CCC_array_adaptive_map_try_insert(
+    CCC_Array_adaptive_map *map,
+    void const *type,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Attempts to insert the key value type.
+@param[in] map_pointer the pointer to the map.
+@param[in] type_pointer the handle to the user type map elem.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@return a compound literal reference to a handle. If Occupied, the handle
+contains a reference to the key value user type in the map and may be unwrapped.
+If Vacant the handle contains a reference to the newly inserted handle in the
+map. If more space is needed but allocation fails an insert error is set. */
+#define CCC_array_adaptive_map_try_insert_wrap(                                \
+    map_pointer, type_pointer, allocator_pointer...                            \
+)                                                                              \
+    &(struct { CCC_Handle private; }){                                         \
+        CCC_array_adaptive_map_try_insert(                                     \
+            (map_pointer), (type_pointer), allocator_pointer                   \
+        )}                                                                     \
+         .private
+
+/** @brief lazily insert type_compound_literal into the map at key if key is
+absent.
+@param[in] map_pointer a pointer to the map.
+@param[in] key the direct key r-value.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@param[in] type_compound_literal the compound literal specifying the value.
+@return a compound literal reference to the handle of the existing or newly
+inserted value. Occupied indicates the key existed, Vacant indicates the key
+was absent. Unwrapping in any case provides the current value unless an error
+occurs that prevents insertion. An insertion error will flag such a case.
+
+Note that for brevity and convenience the user need not write the key to the
+lazy value compound literal as well. This function ensures the key in the
+compound literal matches the searched key. */
+#define CCC_array_adaptive_map_try_insert_with(                                \
+    map_pointer, key, allocator_pointer, type_compound_literal...              \
+)                                                                              \
+    &(struct { CCC_Handle private; }){                                         \
+        CCC_private_array_adaptive_map_try_insert_with(                        \
+            map_pointer, key, allocator_pointer, type_compound_literal         \
+        )}                                                                     \
+         .private
+
+/** @brief Invariantly inserts or overwrites a user struct into the map.
+@param[in] map a pointer to the handle map.
+@param[in] type the user struct key value type.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+@return a handle. If Occupied a handle was overwritten by the new key value.
+If Vacant no prior map handle existed.
+
+Note that this function can be used when the old user type is not needed but
+the information regarding its presence is helpful. */
+[[nodiscard]] CCC_Handle CCC_array_adaptive_map_insert_or_assign(
+    CCC_Array_adaptive_map *map,
+    void const *type,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Invariantly inserts or overwrites a user struct into the map.
+@param[in] map_pointer a pointer to the handle map.
+@param[in] type_pointer a pointer to the user struct key value type.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@return a compound literal reference to a handle. If Occupied a handle was
+overwritten by the new key value. If Vacant no prior map handle existed.
+
+Note that this function can be used when the old user type is not needed but
+the information regarding its presence is helpful. */
+#define CCC_array_adaptive_map_insert_or_assign_wrap(                          \
+    map_pointer, type_pointer, allocator_pointer...                            \
+)                                                                              \
+    &(struct { CCC_Handle private; }){                                         \
+        CCC_array_adaptive_map_insert_or_assign(                               \
+            (map_pointer), (type_pointer), allocator_pointer                   \
+        )}                                                                     \
+         .private
+
+/** @brief Inserts a new key value pair or overwrites the existing handle.
+@param[in] map_pointer the pointer to the handle map.
+@param[in] key the key to be searched in the map.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@param[in] type_compound_literal the compound literal to insert or use for
+overwrite.
+@return a compound literal reference to the handle of the existing or newly
+inserted value. Occupied indicates the key existed, Vacant indicates the key
+was absent. Unwrapping in any case provides the current value unless an error
+occurs that prevents insertion. An insertion error will flag such a case.
+
+Note that for brevity and convenience the user need not write the key to the
+lazy value compound literal as well. This function ensures the key in the
+compound literal matches the searched key. */
+#define CCC_array_adaptive_map_insert_or_assign_with(                          \
+    map_pointer, key, allocator_pointer, type_compound_literal...              \
+)                                                                              \
+    &(struct { CCC_Handle private; }){                                         \
+        CCC_private_array_adaptive_map_insert_or_assign_with(                  \
+            map_pointer, key, allocator_pointer, type_compound_literal         \
+        )}                                                                     \
+         .private
+
+/** @brief Removes the key value in the map storing the old value, if present,
+in the struct containing type_output provided by the user.
+@param[in] map the pointer to the adaptive map.
+@param[out] type_output the handle to the user type map elem.
+@return the removed handle. If Occupied the struct containing type_output
+holds the old value. If Vacant the key value pair was not stored in the map. If
+bad input is provided an input error is set.
+
+Note that this function may write to the struct containing the second parameter
+and wraps it in a handle to provide information about the old value. */
+[[nodiscard]] CCC_Handle CCC_array_adaptive_map_remove_key_value(
+    CCC_Array_adaptive_map *map, void *type_output
+);
+
+/** @brief Removes the key value in the map storing the old value, if present,
+in the struct containing type_output provided by the user.
+@param[in] map_pointer the pointer to the adaptive map.
+@param[out] type_output_pointer the handle to the user type map
+elem.
+@return a compound literal reference to a handle. If Occupied the struct
+containing type_output holds the old value. If Vacant the key value pair was
+not stored in the map. If bad input is provided an input error is set.
+
+Note that this function may write to the struct containing the second parameter
+and wraps it in a handle to provide information about the old value. */
+#define CCC_array_adaptive_map_remove_key_value_wrap(                          \
+    map_pointer, type_output_pointer                                           \
+)                                                                              \
+    &(struct { CCC_Handle private; }){CCC_array_adaptive_map_remove_key_value( \
+                                          (map_pointer), (type_output_pointer) \
+                                      )}                                       \
+         .private
+
+/** @brief Obtains a handle for the provided key in the map for future use.
+@param[in] map the map to be searched.
+@param[in] key the key used to search the map matching the stored key type.
+@return a specialized handle for use with other functions in the Handle
+Interface.
+@warning the contents of a handle should not be examined or modified. Use the
+provided functions, only.
+
+A handle is a search result that provides either an Occupied or Vacant handle
+in the map. An occupied handle signifies that the search was successful. A
+Vacant handle means the search was not successful but a handle is gained to
+where in the map such an element should be inserted.
+
+A handle is rarely useful on its own. It should be passed in a functional style
+to subsequent calls in the Handle Interface. */
+[[nodiscard]] CCC_Array_adaptive_map_handle
+CCC_array_adaptive_map_handle(CCC_Array_adaptive_map *map, void const *key);
+
+/** @brief Obtains a handle for the provided key in the map for future use.
+@param[in] handle_pointer the map to be searched.
+@param[in] key_pointer the key used to search the map matching the stored key
+type.
+@return a compound literal reference to a specialized handle for use with other
+functions in the Handle Interface.
+@warning the contents of a handle should not be examined or modified. Use the
+provided functions, only.
+
+A handle is a search result that provides either an Occupied or Vacant handle
+in the map. An occupied handle signifies that the search was successful. A
+Vacant handle means the search was not successful but a handle is gained to
+where in the map such an element should be inserted.
+
+A handle is rarely useful on its own. It should be passed in a functional style
+to subsequent calls in the Handle Interface. */
+#define CCC_array_adaptive_map_handle_wrap(handle_pointer, key_pointer)        \
+    &(struct { CCC_Array_adaptive_map_handle private; }){                      \
+        CCC_array_adaptive_map_handle((handle_pointer), (key_pointer))}        \
+         .private
+
+/** @brief Modifies the provided handle if it is Occupied.
+@param[in] handle the handle obtained from a handle function or macro.
+@param[in] modifier a CCC_Modifier to operate on an Occupied entry.
+@return the updated handle if it was Occupied or unmodified Vacant handle. */
+[[nodiscard]] CCC_Array_adaptive_map_handle *CCC_array_adaptive_map_and_modify(
+    CCC_Array_adaptive_map_handle *handle, CCC_Modifier const *modifier
+);
+
+/** @brief Modify an Occupied handle with a closure over user type T.
+@param[in] handle_pointer a pointer to the obtained handle.
+@param[in] closure_parameter the typed and named pointer, for example `My_type *
+e` or `My_type const * e` with which to interpret an occupied entry.
+@param[in] closure_over_closure_parameter the code to be run on the named
+reference to user type, if Occupied. This may be a semicolon separated list of
+statements to execute on the type or a section of code wrapped in braces {code
+here} which may be preferred for formatting.
+@return a compound literal reference to the modified handle if it was occupied
+or a vacant handle if it was vacant.
+
+```
+#define ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+// Increment the count if found otherwise do nothing.
+Array_adaptive_map_handle *e =
+    array_adaptive_map_and_modify_with(
+        handle_wrap(&array_adaptive_map, &k),
+        Word * e,
+        e->cnt++;
+    );
+// Increment the count if found otherwise insert a default value.
+Handle_index w =
+    array_adaptive_map_or_insert_with(
+        array_adaptive_map_and_modify_with(
+            handle_wrap(&array_adaptive_map, &k),
+            Word *e,
+            { e->cnt++; }
+        ),
+        (Word){.key = k, .cnt = 1}
+    );
+```
+
+Note that any code written is only evaluated if the handle is Occupied and the
+container can deliver the user named type. This means any function calls are
+lazily evaluated in the closure scope. */
+#define CCC_array_adaptive_map_and_modify_with(                                \
+    handle_pointer, closure_parameter, closure_over_closure_parameter...       \
+)                                                                              \
+    &(struct { CCC_Array_adaptive_map_handle private; }){                      \
+        CCC_private_array_adaptive_map_and_modify_with(                        \
+            handle_pointer, closure_parameter, closure_over_closure_parameter  \
+        )}                                                                     \
+         .private
+
+/** @brief Inserts the struct with user type if the handle is Vacant.
+@param[in] handle the handle obtained via function or macro call.
+@param[in] type handle to the struct to be inserted to Vacant handle.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+@return a pointer to handle in the map invariantly. NULL on error.
+
+Because this functions takes a handle and inserts if it is Vacant, the only
+reason NULL shall be returned is when an insertion error occurs, usually due to
+a user struct allocation failure.
+
+If no allocation is permitted, this function assumes the user struct wrapping
+elem has been allocated with the appropriate lifetime and scope by the user. */
+[[nodiscard]] CCC_Handle_index CCC_array_adaptive_map_or_insert(
+    CCC_Array_adaptive_map_handle const *handle,
+    void const *type,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Lazily insert the desired key value into the handle if it is Vacant.
+@param[in] handle_pointer a pointer to the obtained handle.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@param[in] type_compound_literal the compound literal to construct in place if
+the handle is Vacant.
+@return a reference to the unwrapped user type in the handle, either the
+unmodified reference if the handle was Occupied or the newly inserted element
+if the handle was Vacant. NULL is returned if resizing is required but fails or
+is not allowed.
+
+Note that if the compound literal uses any function calls to generate values
+or other data, such functions will not be called if the handle is Occupied. */
+#define CCC_array_adaptive_map_or_insert_with(                                 \
+    handle_pointer, allocator_pointer, type_compound_literal...                \
+)                                                                              \
+    CCC_private_array_adaptive_map_or_insert_with(                             \
+        handle_pointer, allocator_pointer, type_compound_literal               \
+    )
+
+/** @brief Inserts the provided handle invariantly.
+@param[in] handle the handle returned from a call obtaining a handle.
+@param[in] type a handle to the struct the user intends to insert.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+@return a pointer to the inserted element or NULL upon allocation failure.
+
+This method can be used when the old value in the map does not need to
+be preserved. See the regular insert method if the old value is of interest. */
+[[nodiscard]] CCC_Handle_index CCC_array_adaptive_map_insert_handle(
+    CCC_Array_adaptive_map_handle const *handle,
+    void const *type,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Write the contents of the compound literal type_compound_literal to a
+node.
+@param[in] handle_pointer a pointer to the obtained handle.
+@param[in] allocator_pointer the CCC_Allocator for resizing if needed.
+@param[in] type_compound_literal the compound literal to write to a new slot.
+@return a reference to the newly inserted or overwritten user type. NULL is
+returned if allocation failed or is not allowed when required. */
+#define CCC_array_adaptive_map_insert_handle_with(                             \
+    handle_pointer, allocator_pointer, type_compound_literal...                \
+)                                                                              \
+    CCC_private_array_adaptive_map_insert_handle_with(                         \
+        handle_pointer, allocator_pointer, type_compound_literal               \
+    )
+
+/** @brief Remove the handle from the map if Occupied.
+@param[in] handle a pointer to the map handle.
+@return a handle containing no valid reference but information about removed
+element. If Occupied a handle in the map existed and was removed. If Vacant, no
+prior handle existed to be removed. */
+[[nodiscard]] CCC_Handle
+CCC_array_adaptive_map_remove_handle(CCC_Array_adaptive_map_handle *handle);
+
+/** @brief Remove the handle from the map if Occupied.
+@param[in] handle_pointer pointer to the map handle.
+@return a compound literal reference containing no valid reference but
+information about the old handle. If Occupied a handle in the map existed and
+was removed. If Vacant, no prior handle existed to be removed. */
+#define CCC_array_adaptive_map_remove_handle_wrap(handle_pointer)              \
+    &(struct { CCC_Handle private; }){                                         \
+        CCC_array_adaptive_map_remove_handle((handle_pointer))}                \
+         .private
+
+/** @brief Unwraps the provided handle to obtain a view into the map element.
+@param[in] handle the handle from a query to the map via function or macro.
+@return a view into the table handle if one is present, or NULL. */
+[[nodiscard]] CCC_Handle_index
+CCC_array_adaptive_map_unwrap(CCC_Array_adaptive_map_handle const *handle);
+
+/** @brief Returns the Vacant or Occupied status of the handle.
+@param[in] handle the handle from a query to the map via function or macro.
+@return true if the handle is occupied, false if not. Error if h is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_array_adaptive_map_occupied(CCC_Array_adaptive_map_handle const *handle);
+
+/** @brief Provides the status of the handle should an insertion follow.
+@param[in] handle the handle from a query to the table via function or macro.
+@return true if a handle obtained from an insertion attempt failed to insert
+due to an allocation failure when allocation success was expected. Error if h is
+NULL. */
+[[nodiscard]] CCC_Tribool CCC_array_adaptive_map_insert_error(
+    CCC_Array_adaptive_map_handle const *handle
+);
+
+/** @brief Obtain the handle status from a container handle.
+@param[in] handle a pointer to the handle.
+@return the status stored in the handle after the required action on the
+container completes. If h is NULL a handle input error is returned so ensure
+e is non-NULL to avoid an inaccurate status returned.
+
+Note that this function can be useful for debugging or if more detailed
+messages are needed for logging purposes. See CCC_handle_status_message() in
+ccc/types.h for more information on detailed handle statuses. */
+[[nodiscard]] CCC_Handle_status CCC_array_adaptive_map_handle_status(
+    CCC_Array_adaptive_map_handle const *handle
+);
+
+/**@}*/
+
+/** @name Iterator Interface
+Obtain and manage iterators over the container. */
+/**@{*/
+
+/** @brief Return an iterable range of values from [begin_key, end_key).
+Amortized O(lg N).
+@param[in] map a pointer to the map.
+@param[in] begin_key a pointer to the key intended as the start of the range.
+@param[in] end_key a pointer to the key intended as the end of the range.
+@return a range containing the first element NOT LESS than the begin_key and
+the first element GREATER than end_key.
+
+Note that due to the variety of values that can be returned in the range, using
+the provided range iteration functions from types.h or traits.h is recommended
+for example:
+
+```
+for (CCC_Handle_index index = range_begin(&range);
+     index != range_end(&range);
+     index = next(&map, index))
+{}
+```
+
+This avoids any possible errors in handling an end range element that is in the
+map versus the end map sentinel. */
+[[nodiscard]] CCC_Handle_range CCC_array_adaptive_map_equal_range(
+    CCC_Array_adaptive_map *map, void const *begin_key, void const *end_key
+);
+
+/** @brief Returns a compound literal reference to the desired range. Amortized
+O(lg N).
+@param[in] map_pointer a pointer to the map.
+@param[in] begin_and_end_key_pointers pointers to the begin and end of the
+range.
+@return a compound literal reference to the produced range associated with the
+enclosing scope. This reference is always be valid. */
+#define CCC_array_adaptive_map_equal_range_wrap(                               \
+    map_pointer, begin_and_end_key_pointers...                                 \
+)                                                                              \
+    &(struct { CCC_Handle_range private; }){                                   \
+        CCC_array_adaptive_map_equal_range(                                    \
+            map_pointer, begin_and_end_key_pointers                            \
+        )}                                                                     \
+         .private
+
+/** @brief Return an iterable range_reverse of values from [reverse_begin_key,
+end_key). Amortized O(lg N).
+@param[in] map a pointer to the map.
+@param[in] reverse_begin_key a pointer to the key intended as the start of the
+range_reverse.
+@param[in] reverse_end_key a pointer to the key intended as the end of the
+range_reverse.
+@return a range_reverse containing the first element NOT GREATER than the
+begin_key and the first element LESS than reverse_end_key.
+
+Note that due to the variety of values that can be returned in the
+range_reverse, using the provided range_reverse iteration functions from types.h
+or traits.h is recommended for example:
+
+```
+for (CCC_Handle_index index = range_reverse_begin(&range);
+     index != range_reverse_end(&range);
+     index = next(&map, index))
+{}
+```
+
+This avoids any possible errors in handling an reverse_end range_reverse element
+that is in the map versus the end map sentinel. */
+[[nodiscard]] CCC_Handle_range_reverse
+CCC_array_adaptive_map_equal_range_reverse(
+    CCC_Array_adaptive_map *map,
+    void const *reverse_begin_key,
+    void const *reverse_end_key
+);
+
+/** @brief Returns a compound literal reference to the desired range_reverse.
+Amortized O(lg N).
+@param[in] map_pointer a pointer to the map.
+@param[in] reverse_begin_and_reverse_end_key_pointers pointers to the
+reverse_begin and reverse_end of the range.
+@return a compound literal reference to the produced range_reverse associated
+with the enclosing scope. This reference is always valid. */
+#define CCC_array_adaptive_map_equal_range_reverse_wrap(                       \
+    map_pointer, reverse_begin_and_reverse_end_key_pointers...                 \
+)                                                                              \
+    &(struct { CCC_Handle_range_reverse private; }){                           \
+        CCC_array_adaptive_map_equal_range_reverse(                            \
+            map_pointer, reverse_begin_and_reverse_end_key_pointers            \
+        )}                                                                     \
+         .private
+
+/** @brief Return the start of an inorder traversal of the map. Amortized
+O(lg N).
+@param[in] map a pointer to the map.
+@return a handle for the minimum element of the map. */
+[[nodiscard]] CCC_Handle_index
+CCC_array_adaptive_map_begin(CCC_Array_adaptive_map const *map);
+
+/** @brief Return the start of a reverse inorder traversal of the map.
+Amortized O(lg N).
+@param[in] map a pointer to the map.
+@return a handle for the maximum element of the map. */
+[[nodiscard]] CCC_Handle_index
+CCC_array_adaptive_map_reverse_begin(CCC_Array_adaptive_map const *map);
+
+/** @brief Return the next element in an inorder traversal of the map. O(1).
+@param[in] map a pointer to the map.
+@param[in] iterator pointer to the current iterator user type.
+@return a handle for the next user type stored in the map in an inorder
+traversal. */
+[[nodiscard]] CCC_Handle_index CCC_array_adaptive_map_next(
+    CCC_Array_adaptive_map const *map, CCC_Handle_index iterator
+);
+
+/** @brief Return the reverse_next element in a reverse inorder traversal of the
+map. O(1).
+@param[in] map a pointer to the map.
+@param[in] iterator pointer to the current iterator user type.
+@return a handle for the reverse_next user type stored in the map in a reverse
+inorder traversal. */
+[[nodiscard]] CCC_Handle_index CCC_array_adaptive_map_reverse_next(
+    CCC_Array_adaptive_map const *map, CCC_Handle_index iterator
+);
+
+/** @brief Return the end of an inorder traversal of the map. O(1).
+@param[in] map a pointer to the map.
+@return a handle for the maximum element of the map. */
+[[nodiscard]] CCC_Handle_index
+CCC_array_adaptive_map_end(CCC_Array_adaptive_map const *map);
+
+/** @brief Return the reverse_end of a reverse inorder traversal of the map.
+O(1).
+@param[in] map a pointer to the map.
+@return a handle for the minimum element of the map. */
+[[nodiscard]] CCC_Handle_index
+CCC_array_adaptive_map_reverse_end(CCC_Array_adaptive_map const *map);
+
+/**@}*/
+
+/** @name Deallocation Interface
+Deallocate the container. */
+/**@{*/
+
+/** @brief Frees all slots in the map for use without affecting capacity.
+@param[in] map the map to be cleared.
+@param[in] destructor the CCC_Destructor or `&(CCC_Destructor){}` if no
+maintenance is required on the elements in the map before their slots are
+forfeit.
+
+If the destructor is empty runtime is O(1), else O(size). */
+CCC_Result CCC_array_adaptive_map_clear(
+    CCC_Array_adaptive_map *map, CCC_Destructor const *destructor
+);
+
+/** @brief Frees all slots in the map and frees the underlying buffer.
+@param[in] map the map to be cleared.
+@param[in] destructor the CCC_Destructor or `&(CCC_Destructor){}` if no
+maintenance is required on the elements in the map before their slots are
+forfeit.
+@param[in] allocator the CCC_Allocator for resizing if needed.
+maintenance is required on the elements in the map before their slots are
+forfeit.
+@return the result of free operation. If no allocate function is provided it is
+an error to attempt to free the Flat_buffer and a memory error is returned.
+Otherwise, an OK result is returned.
+
+If the destructor is empty runtime is O(1), else O(size). */
+CCC_Result CCC_array_adaptive_map_clear_and_free(
+    CCC_Array_adaptive_map *map,
+    CCC_Destructor const *destructor,
+    CCC_Allocator const *allocator
+);
+
+/**@}*/
+
+/** @name State Interface
+Obtain the container state. */
+/**@{*/
+
+/** @brief Returns the count of map occupied slots.
+@param[in] map the map.
+@return the size of the map or an argument error is set if array_adaptive_map
+is NULL. */
+[[nodiscard]] CCC_Count
+CCC_array_adaptive_map_count(CCC_Array_adaptive_map const *map);
+
+/** @brief Returns the capacity of the map representing total possible slots.
+@param[in] map the map.
+@return the capacity or an argument error is set if array_adaptive_map is NULL.
+*/
+[[nodiscard]] CCC_Count
+CCC_array_adaptive_map_capacity(CCC_Array_adaptive_map const *map);
+
+/** @brief Returns the size status of the map.
+@param[in] map the map.
+@return true if empty else false. Error if array_adaptive_map is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_array_adaptive_map_is_empty(CCC_Array_adaptive_map const *map);
+
+/** @brief Validation of invariants for the map.
+@param[in] map the map to validate.
+@return true if all invariants hold, false if corruption occurs. Error if
+array_adaptive_mape is NULL.  */
+[[nodiscard]] CCC_Tribool
+CCC_array_adaptive_map_validate(CCC_Array_adaptive_map const *map);
+
+/**@}*/
+
+/** Define this preprocessor directive if shorter names are helpful. Ensure
+ no namespace clashes occur before shortening. */
+#ifdef ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC
+/* NOLINTBEGIN(readability-identifier-naming) */
+typedef CCC_Array_adaptive_map Array_adaptive_map;
+typedef CCC_Array_adaptive_map_handle Array_adaptive_map_handle;
+#    define array_adaptive_map_storage_for(arguments...)                       \
+        CCC_array_adaptive_map_storage_for(arguments)
+#    define array_adaptive_map_default(arguments...)                           \
+        CCC_array_adaptive_map_default(arguments)
+#    define array_adaptive_map_for(arguments...)                               \
+        CCC_array_adaptive_map_for(arguments)
+#    define array_adaptive_map_from(arguments...)                              \
+        CCC_array_adaptive_map_from(arguments)
+#    define array_adaptive_map_with_capacity(arguments...)                     \
+        CCC_array_adaptive_map_with_capacity(arguments)
+#    define array_adaptive_map_with_storage(arguments...)                      \
+        CCC_array_adaptive_map_with_storage(arguments)
+#    define array_adaptive_map_with_allocator_storage(arguments...)            \
+        CCC_array_adaptive_map_with_allocator_storage(arguments)
+#    define array_adaptive_map_at(arguments...)                                \
+        CCC_array_adaptive_map_at(arguments)
+#    define array_adaptive_map_as(arguments...)                                \
+        CCC_array_adaptive_map_as(arguments)
+#    define array_adaptive_map_and_modify_with(arguments...)                   \
+        CCC_array_adaptive_map_and_modify_with(arguments)
+#    define array_adaptive_map_or_insert_with(arguments...)                    \
+        CCC_array_adaptive_map_or_insert_with(arguments)
+#    define array_adaptive_map_insert_handle_with(arguments...)                \
+        CCC_array_adaptive_map_insert_handle_with(arguments)
+#    define array_adaptive_map_try_insert_with(arguments...)                   \
+        CCC_array_adaptive_map_try_insert_with(arguments)
+#    define array_adaptive_map_copy(arguments...)                              \
+        CCC_array_adaptive_map_copy(arguments)
+#    define array_adaptive_map_reserve(arguments...)                           \
+        CCC_array_adaptive_map_reserve(arguments)
+#    define array_adaptive_map_contains(arguments...)                          \
+        CCC_array_adaptive_map_contains(arguments)
+#    define array_adaptive_map_get_key_value(arguments...)                     \
+        CCC_array_adaptive_map_get_key_value(arguments)
+#    define array_adaptive_map_swap_handle_wrap(arguments...)                  \
+        CCC_array_adaptive_map_swap_handle_wrap(arguments)
+#    define array_adaptive_map_try_insert_wrap(arguments...)                   \
+        CCC_array_adaptive_map_try_insert_wrap(arguments)
+#    define array_adaptive_map_remove_key_value_wrap(arguments...)             \
+        CCC_array_adaptive_map_remove_key_value_wrap(arguments)
+#    define array_adaptive_map_remove_handle_wrap(arguments...)                \
+        CCC_array_adaptive_map_remove_handle_wrap(arguments)
+#    define array_adaptive_map_swap_handle(arguments...)                       \
+        CCC_array_adaptive_map_swap_handle(arguments)
+#    define array_adaptive_map_try_insert(arguments...)                        \
+        CCC_array_adaptive_map_try_insert(arguments)
+#    define array_adaptive_map_insert_or_assign(arguments...)                  \
+        CCC_array_adaptive_map_insert_or_assign(arguments)
+#    define array_adaptive_map_insert_or_assign_wrap(arguments...)             \
+        CCC_array_adaptive_map_insert_or_assign_wrap(arguments)
+#    define array_adaptive_map_insert_or_assign_with(arguments...)             \
+        CCC_array_adaptive_map_insert_or_assign_with(arguments)
+#    define array_adaptive_map_remove_key_value(arguments...)                  \
+        CCC_array_adaptive_map_remove_key_value(arguments)
+#    define array_adaptive_map_remove_handle(arguments...)                     \
+        CCC_array_adaptive_map_remove_handle(arguments)
+#    define array_adaptive_map_handle_wrap(arguments...)                       \
+        CCC_array_adaptive_map_handle_wrap(arguments)
+#    define array_adaptive_map_handle(arguments...)                            \
+        CCC_array_adaptive_map_handle(arguments)
+#    define array_adaptive_map_and_modify(arguments...)                        \
+        CCC_array_adaptive_map_and_modify(arguments)
+#    define array_adaptive_map_or_insert(arguments...)                         \
+        CCC_array_adaptive_map_or_insert(arguments)
+#    define array_adaptive_map_insert_handle(arguments...)                     \
+        CCC_array_adaptive_map_insert_handle(arguments)
+#    define array_adaptive_map_unwrap(arguments...)                            \
+        CCC_array_adaptive_map_unwrap(arguments)
+#    define array_adaptive_map_insert_error(arguments...)                      \
+        CCC_array_adaptive_map_insert_error(arguments)
+#    define array_adaptive_map_handle_status(arguments...)                     \
+        CCC_array_adaptive_map_handle_status(arguments)
+#    define array_adaptive_map_occupied(arguments...)                          \
+        CCC_array_adaptive_map_occupied(arguments)
+#    define array_adaptive_map_clear(arguments...)                             \
+        CCC_array_adaptive_map_clear(arguments)
+#    define array_adaptive_map_clear_and_free(arguments...)                    \
+        CCC_array_adaptive_map_clear_and_free(arguments)
+#    define array_adaptive_map_begin(arguments...)                             \
+        CCC_array_adaptive_map_begin(arguments)
+#    define array_adaptive_map_reverse_begin(arguments...)                     \
+        CCC_array_adaptive_map_reverse_begin(arguments)
+#    define array_adaptive_map_end(arguments...)                               \
+        CCC_array_adaptive_map_end(arguments)
+#    define array_adaptive_map_reverse_end(arguments...)                       \
+        CCC_array_adaptive_map_reverse_end(arguments)
+#    define array_adaptive_map_next(arguments...)                              \
+        CCC_array_adaptive_map_next(arguments)
+#    define array_adaptive_map_reverse_next(arguments...)                      \
+        CCC_array_adaptive_map_reverse_next(arguments)
+#    define array_adaptive_map_equal_range(arguments...)                       \
+        CCC_array_adaptive_map_equal_range(arguments)
+#    define array_adaptive_map_equal_range_wrap(arguments...)                  \
+        CCC_array_adaptive_map_equal_range_wrap(arguments)
+#    define array_adaptive_map_equal_range_reverse(arguments...)               \
+        CCC_array_adaptive_map_equal_range_reverse(arguments)
+#    define array_adaptive_map_equal_range_reverse_wrap(arguments...)          \
+        CCC_array_adaptive_map_equal_range_reverse_wrap(arguments)
+#    define array_adaptive_map_count(arguments...)                             \
+        CCC_array_adaptive_map_count(arguments)
+#    define array_adaptive_map_capacity(arguments...)                          \
+        CCC_array_adaptive_map_capacity(arguments)
+#    define array_adaptive_map_is_empty(arguments...)                          \
+        CCC_array_adaptive_map_is_empty(arguments)
+#    define array_adaptive_map_validate(arguments...)                          \
+        CCC_array_adaptive_map_validate(arguments)
+/* NOLINTEND(readability-identifier-naming) */
+#endif /* ARRAY_ADAPTIVE_MAP_USING_NAMESPACE_CCC */
+
+#endif /* CCC_ARRAY_ADAPTIVE_MAP_H */

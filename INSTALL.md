@@ -2,6 +2,26 @@
 
 Currently, this library utilizes some features that many compilers support such as gcc, clang, and AppleClang, but support is not ready for Windows. The C Container Collection supports freestanding environments.
 
+## Core Versus Specialized Containers
+
+By default the C Container Collection offers a cohesive set of robust containers. However, some users may have niche runtime or space requirements. Therefore, there is a `ccc-specialized-[VERSION].zip` release available on the releases page. Obtaining either will not affect these build instructions. If the `specialized/` directories are found, their files will be compiled. If they are absent, they are ignored. However, if you wish to force only compilation of the core library when all `specialized/` directories are present, use the following CMake cache variable.
+
+On the command line.
+
+```zsh
+cmake --preset=clang-release -DCCC_BUILD_SPECIALIZED=0
+```
+
+As a CMake cache variable.
+
+```json
+"cacheVariables": {
+    "CCC_BUILD_SPECIALIZED": "OFF"
+}
+```
+
+This will likely not affect users as much as developers but the instruction is provided for completeness.
+
 ## Fetch Content Install
 
 This approach will allow CMake to build the collection from source as part of your project. The collection does not have external dependencies, besides the standard library, so this may be viable for you. This is helpful if you want the ability to build the library in release or debug mode along with your project and possibly step through it with a debugger during a debug build. If you would rather link to the release build library file see the next section for the manual install.
@@ -13,12 +33,9 @@ include(FetchContent)
 FetchContent_Declare(
   ccc
   URL https://github.com/SkeletOSS/ccc/releases/download/v[MAJOR.MINOR.PATCH]/ccc-v[MAJOR.MINOR.PATCH].zip
-  SYSTEM # Optional flag to use ccc as a system library so that your tooling like clang-tidy ignores ccc.
-  #DOWNLOAD_EXTRACT_TIMESTAMP FALSE # CMake may raise a warning to set this. If so, uncomment and set.
+  SYSTEM # Optional flag to mark ccc as a system library and silence compiler and tooling warnings.
 )
 FetchContent_MakeAvailable(ccc)
-# Include this line if you want to ignore compiler warnings from the ccc library when compiling your project.
-target_compile_options(ccc PRIVATE "-w")
 ```
 
 To link against the library in the project use the `ccc` namespace.
@@ -36,12 +53,9 @@ FetchContent_Declare(
   ccc
   URL https://github.com/SkeletOSS/ccc/releases/download/v0.72.0/ccc-v0.72.0.zip
   URL_HASH SHA256=9965d8ea2115a40ee7711b07f10ae15b1628825151b233b9cb95f5407425ab74
-  SYSTEM # Optional flag to use ccc as a system library so that your tooling like clang-tidy ignores ccc.
-  #DOWNLOAD_EXTRACT_TIMESTAMP FALSE # CMake may raise a warning to set this. If so, uncomment and set.
+  SYSTEM # Optional flag to mark ccc as a system library and silence compiler and tooling warnings.
 )
 FetchContent_MakeAvailable(ccc)
-# Include this line if you want to ignore compiler warnings from the ccc library when compiling your project.
-target_compile_options(ccc PRIVATE "-w")
 add_executable(main main.c)
 target_link_libraries(main ccc::ccc)
 ```
@@ -57,12 +71,12 @@ FetchContent_Declare(
   ccc
   URL https://github.com/SkeletOSS/ccc/archive/refs/heads/main.zip
   SYSTEM
-  DOWNLOAD_EXTRACT_TIMESTAMP FALSE
 )
 ```
 
 Keep in mind a few points about what you are opting in to if you take this approach.
 
+- The main edge includes all specialized containers.
 - Updating the URL is never required. Every time you rebuild your project you get the latest version of the library.
 - The API may break. You are exposed to naming and interface changes before a release finalizes such changes.
 - The main branch is continuously validated by CI with tests, sanitizers, and static analysis. All tests and checks must pass before merging into main so this URL should provide code that can always build and run.
@@ -110,12 +124,9 @@ FetchContent_Declare(
   ccc
   URL https://github.com/SkeletOSS/ccc/releases/download/v0.72.0/ccc-v0.72.0.zip
   URL_HASH SHA256=9965d8ea2115a40ee7711b07f10ae15b1628825151b233b9cb95f5407425ab74
-  SYSTEM # Optional flag to use ccc as a system library so that your tooling like clang-tidy ignores ccc.
-  #DOWNLOAD_EXTRACT_TIMESTAMP FALSE # CMake may raise a warning to set this. If so, uncomment and set.
+  SYSTEM # Optional flag to mark ccc as a system library and silence compiler and tooling warnings.
 )
 FetchContent_MakeAvailable(ccc)
-# Include this line if you want to ignore compiler warnings from the ccc library when compiling your project.
-target_compile_options(ccc PRIVATE "-w")
 
 # New step allowing CCC to find the configuration header.
 target_include_directories(ccc PRIVATE
@@ -197,10 +208,10 @@ Then the installation looks like this.
 ~/.local
 ├── include
 │   └── ccc
-│       ├── buffer.h
-│       ├── double_ended_priority_queue.h
-│       ├── doubly_linked_list.h
+│       ├── flat_buffer.h
+│       ├── flat_double_ended_priority_queue.h
 │       ├── flat_hash_map.h
+│       ├── doubly_linked_list.h
 │       └── ...
 └── lib
     ├── cmake

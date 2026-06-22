@@ -11,6 +11,7 @@
         - [Invalidated pointers](#invalidated-pointers)
         - [Stable pointers](#stable-pointers)
         - [Stable handles](#stable-handles)
+- [Specialized Containers](#specialized-containers)
 - [Installation](#installation)
 - [Coverage Report](#coverage-report)
 - [Back to Repository](https://github.com/SkeletOSS/ccc)
@@ -19,22 +20,25 @@
 
 Follow the links to the C Container Collection headers.
 
-- [ccc/adaptive_map.h](https://skeletoss.github.io/ccc/adaptive__map_8h.html)
-- [ccc/array_adaptive_map.h](https://skeletoss.github.io/ccc/array__adaptive__map_8h.html)
-- [ccc/array_tree_map.h](https://skeletoss.github.io/ccc/array__tree__map_8h.html)
-- [ccc/configuration.h](https://skeletoss.github.io/ccc/configuration_8h.html)
-- [ccc/doubly_linked_list.h](https://skeletoss.github.io/ccc/doubly__linked__list_8h.html)
-- [ccc/flat_bitset.h](https://skeletoss.github.io/ccc/flat__bitset_8h.html)
-- [ccc/flat_buffer.h](https://skeletoss.github.io/ccc/flat__buffer_8h.html)
-- [ccc/flat_double_ended_queue.h](https://skeletoss.github.io/ccc/flat__double__ended__queue_8h.html)
-- [ccc/flat_hash_map.h](https://skeletoss.github.io/ccc/flat__hash__map_8h.html)
-- [ccc/flat_priority_queue.h](https://skeletoss.github.io/ccc/flat__priority__queue_8h.html)
-- [ccc/priority_queue.h](https://skeletoss.github.io/ccc/priority__queue_8h.html)
-- [ccc/singly_linked_list.h](https://skeletoss.github.io/ccc/singly__linked__list_8h.html)
-- [ccc/sort.h](https://skeletoss.github.io/ccc/sort_8h.html)
-- [ccc/traits.h](https://skeletoss.github.io/ccc/traits_8h.html)
-- [ccc/tree_map.h](https://skeletoss.github.io/ccc/tree__map_8h.html)
-- [ccc/types.h](https://skeletoss.github.io/ccc/types_8h.html)
+- array_tree_map.h
+- configuration.h
+- doubly_linked_list.h
+- flat_bitset.h
+- flat_buffer.h
+- flat_double_ended_queue.h
+- flat_hash_map.h
+- flat_priority_queue.h
+- singly_linked_list.h
+- sort.h
+- traits.h
+- tree_map.h
+- types.h
+
+Specialized containers not included in the default core collection.
+
+- adaptive_map.h
+- array_adaptive_map.h
+- priority_queue.h
 
 ## CCC Cardinal Rules {#ccc-cardinal-rules}
 
@@ -452,6 +456,12 @@ CCC_Handle_index b = CCC_array_tree_map_or_insert(
 ```
 
 After the second element is inserted, `a` remains valid and can be provided to the container API to obtain a pointer to the user element. The underlying storage may have been resized or moved, but the location in the array remains stable. Therefore, it is important to remember that only the handle index remains stable, never the pointer obtained with that index.
+
+## Specialized Containers
+
+Some containers in the collection have interesting or niche space and runtime characteristics. For example, the `CCC_Adaptive_map` and `CCC_Array_adaptive_map` have identical interfaces to the `CCC_Tree_map` and `CCC_Array_tree_map` but they are implemented with a self-optimizing splay tree. This means that searching is not a read-only operation because every query modifies the underlying data structure. This has interesting implications for runtime over certain usage patterns, but also is not what users might expect from a search operation. Therefore, this container is relegated to the `specialized/` directories.
+
+Explore the `specialized/` containers to see if the containers stored there offer any space or runtime guarantees that are appealing. By default, these are not included in the standard release. They can be obtained from the releases page or by consuming the bleeding edge `main.zip` from the repository. See the [INSTALL.md](INSTALL.md) file for more information.
 
 ## Installation {#installation}
 

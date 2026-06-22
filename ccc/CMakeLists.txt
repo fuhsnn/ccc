@@ -10,9 +10,6 @@ target_sources(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/source/flat_hash_map.c
         ${PROJECT_SOURCE_DIR}/source/flat_double_ended_queue.c
         ${PROJECT_SOURCE_DIR}/source/flat_priority_queue.c
-        ${PROJECT_SOURCE_DIR}/source/adaptive_map.c
-        ${PROJECT_SOURCE_DIR}/source/array_adaptive_map.c
-        ${PROJECT_SOURCE_DIR}/source/priority_queue.c
         ${PROJECT_SOURCE_DIR}/source/singly_linked_list.c
         ${PROJECT_SOURCE_DIR}/source/doubly_linked_list.c
         ${PROJECT_SOURCE_DIR}/source/tree_map.c
@@ -23,9 +20,6 @@ target_sources(${PROJECT_NAME}
             BASE_DIRS ${PROJECT_SOURCE_DIR}
             FILES 
               private/private_flat_priority_queue.h
-              private/private_priority_queue.h
-              private/private_adaptive_map.h
-              private/private_array_adaptive_map.h
               private/private_singly_linked_list.h
               private/private_doubly_linked_list.h
               private/private_tree_map.h
@@ -42,16 +36,32 @@ target_sources(${PROJECT_NAME}
               flat_hash_map.h
               flat_double_ended_queue.h
               flat_priority_queue.h
-              adaptive_map.h
-              array_adaptive_map.h
               tree_map.h
               array_tree_map.h
-              priority_queue.h
               singly_linked_list.h
               doubly_linked_list.h
               traits.h
               sort.h
 )
+
+if (CCC_BUILD_SPECIALIZED)
+    message(STATUS "CCC Building with specialized modules enabled.")
+    target_sources(${PROJECT_NAME}
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/source/specialized/adaptive_map.c
+            ${PROJECT_SOURCE_DIR}/source/specialized/array_adaptive_map.c
+            ${PROJECT_SOURCE_DIR}/source/specialized/priority_queue.c
+        PUBLIC 
+            FILE_SET public_headers
+                FILES 
+                  specialized/private/private_adaptive_map.h
+                  specialized/private/private_array_adaptive_map.h
+                  specialized/private/private_priority_queue.h
+                  specialized/adaptive_map.h
+                  specialized/array_adaptive_map.h
+                  specialized/priority_queue.h
+    )
+endif()
 
 option(CCC_FLAT_HASH_MAP_PORTABLE "Fallback to portable implementation of flat hash map to improve cross platform compatibility while decreasing optimizations" OFF)
 set(CCC_USER_CONFIGURATION ""  CACHE STRING "Freestanding environment with user defined configuration providing necessary functions")

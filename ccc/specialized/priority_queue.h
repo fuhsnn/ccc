@@ -1,0 +1,493 @@
+/** @cond
+Copyright 2025 Alexander G. Lopez
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+   http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+@endcond */
+/** @file
+@brief The Priority Queue Interface
+
+A priority queue offers simple, fast, pointer stable management of a priority
+queue. Push is `O(1)`. The cost to execute the increase key in a max heap and
+decrease key in a min heap is `O(1)`. However, due to the restructuring this
+causes that increases the cost of later pops, the more accurate runtime is
+`o(log(N))`. The cost of a pop operation is `O(log(N))`.
+
+To shorten names in the interface, define the following preprocessor directive
+at the top of your file.
+
+```
+#define PRIORITY_QUEUE_USING_NAMESPACE_CCC
+```
+
+All types and functions can then be written without the `CCC_` prefix. */
+#ifndef CCC_PRIORITY_QUEUE_H
+#define CCC_PRIORITY_QUEUE_H
+
+/** @cond */
+#include <stddef.h>
+/** @endcond */
+
+#include "../types.h" /* IWYU pragma: export */
+#include "private/private_priority_queue.h"
+
+/** @name Container Types
+Types available in the container interface. */
+/**@{*/
+
+/** @brief A container for pointer stability and an O(1) push and amortized o(lg
+N) increase/decrease key.
+@warning it is undefined behavior to access an uninitialized container.
+
+A priority queue can be initialized on the stack, heap, or data segment at
+runtime or compile time.*/
+typedef struct CCC_Priority_queue CCC_Priority_queue;
+
+/** @brief The embedded struct type_intruder for operation of the priority
+queue.
+
+It can be used in an allocating or non allocating container. If allocation is
+prohibited the container assumes the element is wrapped in pre-allocated
+memory with the appropriate lifetime and scope for the user's needs; the
+container does not allocate or free in this case. If allocation is allowed
+the container will handle copying the data wrapping the element to allocations
+and deallocating when necessary. */
+typedef struct CCC_Priority_queue_node CCC_Priority_queue_node;
+
+/**@}*/
+
+/** @name Initialization Interface
+Initialize the container with memory and callbacks. */
+/**@{*/
+
+/** @brief Initialize a default priority queue at runtime or compile time.
+@param[in] type_name the name of the user type_intruder wrapping priority_queue
+elems.
+@param[in] type_intruder_field the name of the field for the priority_queue
+elem.
+@param[in] order CCC_ORDER_LESSER for a min priority_queue or CCC_ORDER_GREATER
+for a max priority_queue.
+@param[in] comparator the pointer to CCC_Comparator for type comparison.
+@return the initialized priority_queue on the right side of an equality operator
+(e.g. CCC_Priority_queue priority_queue = CCC_priority_queue_for(...);)
+*/
+#define CCC_priority_queue_default(                                            \
+    type_name, type_intruder_field, order, comparator                          \
+)                                                                              \
+    CCC_private_priority_queue_for(                                            \
+        type_name, type_intruder_field, order, comparator                      \
+    )
+
+/** @brief Initialize a priority queue at runtime or compile time.
+@param[in] type_name the name of the user type_intruder wrapping priority_queue
+elems.
+@param[in] type_intruder_field the name of the field for the priority_queue
+elem.
+@param[in] order CCC_ORDER_LESSER for a min priority_queue or CCC_ORDER_GREATER
+for a max priority_queue.
+@param[in] comparator the CCC_Comparator for type comparison.
+@return the priority_queue on the right side of equality operator. */
+#define CCC_priority_queue_for(                                                \
+    type_name, type_intruder_field, order, comparator...                       \
+)                                                                              \
+    CCC_private_priority_queue_for(                                            \
+        type_name, type_intruder_field, order, comparator                      \
+    )
+
+/** @brief Initialize a priority queue at runtime from a compound literal array.
+@param[in] type_intruder_field the name of the field intruding on user's type.
+@param[in] order CCC_ORDER_LESSER for a min priority queue or CCC_ORDER_GREATER
+for a max priority queue.
+@param[in] comparator the CCC_Comparator to compare two user types.
+@param[in] allocator the CCC_Allocator for construction.
+@param[in] destructor optional CCC_Destructor if insertion fails.
+@param[in] compound_literal_array the array of user types to insert.
+@return the priority_queue on the right side of an equality operator */
+#define CCC_priority_queue_from(                                               \
+    type_intruder_field,                                                       \
+    order,                                                                     \
+    comparator,                                                                \
+    allocator,                                                                 \
+    destructor,                                                                \
+    compound_literal_array...                                                  \
+)                                                                              \
+    CCC_private_priority_queue_from(                                           \
+        type_intruder_field,                                                   \
+        order,                                                                 \
+        comparator,                                                            \
+        allocator,                                                             \
+        destructor,                                                            \
+        compound_literal_array                                                 \
+    )
+
+/**@}*/
+
+/** @name Insert and Remove Interface
+Insert and remove elements from the priority queue. */
+/**@{*/
+
+/** @brief Adds an element to the priority queue in correct total order. O(1).
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] type_intruder a pointer to the intrusive element in the user type.
+@param[in] allocator the CCC_Allocator for insertion allocation, if needed.
+@return a reference to the newly inserted user type_intruder or NULL if NULL
+arguments are provided or allocation fails when permitted.
+
+Note that if allocation is permitted the user type_intruder is copied into a
+newly allocated node.
+
+If allocation is not permitted this function assumes the memory wrapping elem
+has been allocated with the appropriate lifetime for the user's needs. */
+[[nodiscard]] void *CCC_priority_queue_push(
+    CCC_Priority_queue *priority_queue,
+    CCC_Priority_queue_node *type_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Write user type_intruder directly to a newly allocated priority queue
+elem.
+@param[in] priority_queue_pointer a pointer to the priority queue.
+@param[in] allocator_pointer the pointer for allocation. It is required.
+@param[in] type_compound_literal the compound literal to write to the
+allocation.
+@return a reference to the successfully inserted element or NULL if allocation
+fails or is not allowed.
+@warning a non-empty `&(CCC_Allocator){.allocate = my_allocate}` must be
+provided so that memory can be allocated for the compound literal data. */
+#define CCC_priority_queue_emplace(                                            \
+    priority_queue_pointer, allocator_pointer, type_compound_literal...        \
+)                                                                              \
+    CCC_private_priority_queue_emplace(                                        \
+        priority_queue_pointer, allocator_pointer, type_compound_literal       \
+    )
+
+/** @brief Pops the front element from the priority queue. Amortized O(lgN).
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] allocator the CCC_Allocator to free the element, if needed.
+@return ok if pop was successful or an input error if priority_queue is NULL or
+empty. */
+CCC_Result CCC_priority_queue_pop(
+    CCC_Priority_queue *priority_queue, CCC_Allocator const *allocator
+);
+
+/** Extract the element known to be in the priority_queue without freeing
+memory. Amortized O(lgN).
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] type_intruder a pointer to the intrusive element in the user type.
+@return a pointer to the extracted user type.
+
+Note that the user must ensure that type_intruder is in the priority queue. */
+[[nodiscard]] void *CCC_priority_queue_extract(
+    CCC_Priority_queue *priority_queue, CCC_Priority_queue_node *type_intruder
+);
+
+/** @brief Erase type_intruder from the priority_queue. Amortized O(lgN).
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] type_intruder a pointer to the intrusive element in the user type.
+@param[in] allocator the CCC_Allocator to free the element, if needed.
+@return ok if erase was successful or an input error if priority_queue or elem
+is NULL or priority_queue is empty.
+
+Note that the user must ensure that type_intruder is in the priority queue. */
+CCC_Result CCC_priority_queue_erase(
+    CCC_Priority_queue *priority_queue,
+    CCC_Priority_queue_node *type_intruder,
+    CCC_Allocator const *allocator
+);
+
+/** @brief Update the priority in the user type_intruder wrapping elem.
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] type_intruder a pointer to the intrusive element in the user type.
+@param[in] modifier the CCC_Modifier to act on the type_intruder wrapping elem.
+@return a reference to the updated user type_intruder or NULL if update failed
+due to bad arguments provided.
+@warning the user must ensure type_intruder is in the priority_queue.
+
+Note that this operation may incur unnecessary overhead if the user can't
+deduce if an increase or decrease is occurring. See the increase and decrease
+operations. O(1) best case, O(lgN) worst case. */
+void *CCC_priority_queue_update(
+    CCC_Priority_queue *priority_queue,
+    CCC_Priority_queue_node *type_intruder,
+    CCC_Modifier const *modifier
+);
+
+/** @brief Update the priority in the user type stored in the container.
+@param[in] priority_queue_pointer a pointer to the priority queue.
+@param[in] closure_parameter a pointer variable to the user type being updated.
+@param[in] update_closure_over_closure_parameter the semicolon separated
+statements to execute on the user type provided (optionally wrapping {code here}
+in braces may help with formatting). This closure may safely modify the key used
+to track the user element's priority in the priority queue.
+@return a reference to the updated user type or NULL if update failed due to bad
+arguments provided.
+@warning the user must ensure the closure parameter is a reference to an
+instance of the type actively stored in the priority queue.
+
+```
+#define PRIORITY_QUEUE_USING_NAMESPACE_CCC
+struct Val
+{
+    Priority_queue_node e;
+    int key;
+};
+Priority_queue priority_queue = build_rand_priority_queue();
+struct Val *e = get_rand_val(&priority_queue);
+priority_queue_update_with(&priority_queue, e, { e->key = rand_key(); });
+```
+
+Note that this operation may incur unnecessary overhead if the user can't
+deduce if an increase or decrease is occurring. See the increase and decrease
+operations. O(1) best case, O(lgN) worst case. */
+#define CCC_priority_queue_update_with(                                        \
+    priority_queue_pointer,                                                    \
+    closure_parameter,                                                         \
+    update_closure_over_closure_parameter...                                   \
+)                                                                              \
+    CCC_private_priority_queue_update_with(                                    \
+        priority_queue_pointer,                                                \
+        closure_parameter,                                                     \
+        update_closure_over_closure_parameter                                  \
+    )
+
+/** @brief Increases the priority of the type_intruder wrapping elem. O(1) or
+O(lgN)
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] type_intruder a pointer to the intrusive element in the user type.
+@param[in] modifier the CCC_Modifier to act on the type_intruder wrapping elem.
+@return a reference to the updated user type_intruder or NULL if update failed
+due to bad arguments provided.
+@warning the data structure will be in an invalid state if the user decreases
+the priority by mistake in this function.
+
+Note that this is optimal update technique if the priority queue has been
+initialized as a max queue and the new value is known to be greater than the old
+value. If this is a max heap O(1), otherwise O(lgN).
+
+While the best case operation is O(1) the impact of restructuring on future pops
+from the priority_queue creates amortized o(lgN) runtime for this function.*/
+void *CCC_priority_queue_increase(
+    CCC_Priority_queue *priority_queue,
+    CCC_Priority_queue_node *type_intruder,
+    CCC_Modifier const *modifier
+);
+
+/** @brief Increases the priority of the user type stored in the
+container.
+@param[in] priority_queue_pointer a pointer to the priority queue.
+@param[in] closure_parameter a pointer variable to the user type being updated.
+@param[in] increase_closure_over_closure_parameter the semicolon separated
+statements to execute on the user type provided (optionally wrapping {code here}
+in braces may help with formatting). This closure may safely modify the key used
+to track the user element's priority in the priority queue.
+@return a reference to the updated user type or NULL if update failed due to bad
+arguments provided.
+@warning the user must ensure the closure parameter is a reference to an
+instance of the type actively stored in the priority queue. The data structure
+will be in an invalid state if the user decreases the priority by mistake in
+this function.
+
+```
+#define PRIORITY_QUEUE_USING_NAMESPACE_CCC
+struct Val
+{
+    Priority_queue_node e;
+    int key;
+};
+Priority_queue priority_queue = build_rand_priority_queue();
+struct Val *e = get_rand_val(&priority_queue);
+priority_queue_increase_with(&priority_queue, e, { e->key++; });
+```
+
+Note that this is optimal update technique if the priority queue has been
+initialized as a max queue and the new value is known to be greater than the old
+value. If this is a max heap O(1), otherwise O(lgN).
+
+While the best case operation is O(1) the impact of restructuring on future pops
+from the priority_queue creates amortized o(lgN) runtime for this function. */
+#define CCC_priority_queue_increase_with(                                      \
+    priority_queue_pointer,                                                    \
+    closure_parameter,                                                         \
+    increase_closure_over_closure_parameter...                                 \
+)                                                                              \
+    CCC_private_priority_queue_increase_with(                                  \
+        priority_queue_pointer,                                                \
+        closure_parameter,                                                     \
+        increase_closure_over_closure_parameter                                \
+    )
+
+/** @brief Decreases the value of the type_intruder wrapping elem. O(1) or
+O(lgN)
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] type_intruder a pointer to the intrusive element in the user type.
+@param[in] modifier the CCC_Modifier to act on the type_intruder wrapping elem.
+@return a reference to the updated user type_intruder or NULL if update failed
+due to bad arguments provided.
+
+Note that this is optimal update technique if the priority queue has been
+initialized as a min queue and the new value is known to be less than the old
+value. If this is a min heap O(1), otherwise O(lgN).
+
+While the best case operation is O(1) the impact of restructuring on future pops
+from the priority_queue creates amortized o(lgN) runtime for this function. */
+void *CCC_priority_queue_decrease(
+    CCC_Priority_queue *priority_queue,
+    CCC_Priority_queue_node *type_intruder,
+    CCC_Modifier const *modifier
+);
+
+/** @brief Decreases the priority of the user type_intruder stored in the
+container.
+@param[in] priority_queue_pointer a pointer to the priority queue.
+@param[in] closure_parameter a pointer variable to the user type being updated.
+@param[in] decrease_closure_over_closure_parameter the semicolon separated
+statements to execute on the user type provided (optionally wrapping {code here}
+in braces may help with formatting). This closure may safely modify the key used
+to track the user element's priority in the priority queue.
+@return a reference to the updated user type_intruder or NULL if update failed
+due to bad arguments provided.
+@warning the user must ensure the type_pointer is a reference to an
+instance of the type_intruder actively stored in the priority queue. The data
+structure will be in an invalid state if the user decreases the priority by
+mistake in this function.
+
+```
+#define PRIORITY_QUEUE_USING_NAMESPACE_CCC
+struct Val
+{
+    Priority_queue_node e;
+    int key;
+};
+Priority_queue priority_queue = build_rand_priority_queue();
+struct Val *e = get_rand_priority_queue_node(&priority_queue);
+priority_queue_decrease_with(&priority_queue, e, { e->key--; });
+```
+
+Note that this is optimal update technique if the priority queue has been
+initialized as a min queue and the new value is known to be less than the old
+value. If this is a min heap O(1), otherwise O(lgN).
+
+While the best case operation is O(1) the impact of restructuring on future pops
+from the priority_queue creates amortized o(lgN) runtime for this function. */
+#define CCC_priority_queue_decrease_with(                                      \
+    priority_queue_pointer,                                                    \
+    closure_parameter,                                                         \
+    decrease_closure_over_closure_parameter...                                 \
+)                                                                              \
+    CCC_private_priority_queue_decrease_with(                                  \
+        priority_queue_pointer,                                                \
+        closure_parameter,                                                     \
+        decrease_closure_over_closure_parameter                                \
+    )
+
+/**@}*/
+
+/** @name Deallocation Interface
+Deallocate the container. */
+/**@{*/
+
+/** @brief Removes all elements from the priority_queue, freeing if needed.
+@param[in] priority_queue a pointer to the priority queue.
+@param[in] destructor the CCC_Destructor if needed.
+@param[in] allocator the CCC_Allocator to free elements, if needed.
+@return ok if the clear was successful or an input error for NULL arguments. */
+CCC_Result CCC_priority_queue_clear(
+    CCC_Priority_queue *priority_queue,
+    CCC_Destructor const *destructor,
+    CCC_Allocator const *allocator
+);
+
+/**@}*/
+
+/** @name State Interface
+Obtain state from the container. */
+/**@{*/
+
+/** @brief Obtain a reference to the front of the priority queue. O(1).
+@param[in] priority_queue a pointer to the priority queue.
+@return a reference to the front element in the priority_queue. */
+[[nodiscard]] void *
+CCC_priority_queue_front(CCC_Priority_queue const *priority_queue);
+
+/** @brief Returns true if the priority queue is empty false if not. O(1).
+@param[in] priority_queue a pointer to the priority queue.
+@return true if the size is 0, false if not empty. Error if priority_queue is
+NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_priority_queue_is_empty(CCC_Priority_queue const *priority_queue);
+
+/** @brief Returns the count of priority queue occupied nodes.
+@param[in] priority_queue a pointer to the priority queue.
+@return the size of the priority_queue or an argument error is set if
+priority_queue is NULL. */
+[[nodiscard]] CCC_Count
+CCC_priority_queue_count(CCC_Priority_queue const *priority_queue);
+
+/** @brief Verifies the internal invariants of the priority_queue hold.
+@param[in] priority_queue a pointer to the priority queue.
+@return true if the priority_queue is valid false if priority_queue is invalid.
+Error if priority_queue is NULL. */
+[[nodiscard]] CCC_Tribool
+CCC_priority_queue_validate(CCC_Priority_queue const *priority_queue);
+
+/** @brief Return the order used to initialize the priority_queue.
+@param[in] priority_queue a pointer to the priority queue.
+@return LES or GRT ordering. Any other ordering is invalid. */
+[[nodiscard]] CCC_Order
+CCC_priority_queue_order(CCC_Priority_queue const *priority_queue);
+
+/**@}*/
+
+/** Define this preprocessor directive if shortened names are desired for the
+priority queue container. Check for collisions before name shortening. */
+#ifdef PRIORITY_QUEUE_USING_NAMESPACE_CCC
+/* NOLINTBEGIN(readability-identifier-naming) */
+typedef CCC_Priority_queue_node Priority_queue_node;
+typedef CCC_Priority_queue Priority_queue;
+#    define priority_queue_default(arguments...)                               \
+        CCC_priority_queue_default(arguments)
+#    define priority_queue_for(arguments...) CCC_priority_queue_for(arguments)
+#    define priority_queue_from(arguments...) CCC_priority_queue_from(arguments)
+#    define priority_queue_front(arguments...)                                 \
+        CCC_priority_queue_front(arguments)
+#    define priority_queue_push(arguments...) CCC_priority_queue_push(arguments)
+#    define priority_queue_emplace(arguments...)                               \
+        CCC_priority_queue_emplace(arguments)
+#    define priority_queue_pop(arguments...) CCC_priority_queue_pop(arguments)
+#    define priority_queue_extract(arguments...)                               \
+        CCC_priority_queue_extract(arguments)
+#    define priority_queue_is_empty(arguments...)                              \
+        CCC_priority_queue_is_empty(arguments)
+#    define priority_queue_count(arguments...)                                 \
+        CCC_priority_queue_count(arguments)
+#    define priority_queue_update(arguments...)                                \
+        CCC_priority_queue_update(arguments)
+#    define priority_queue_increase(arguments...)                              \
+        CCC_priority_queue_increase(arguments)
+#    define priority_queue_decrease(arguments...)                              \
+        CCC_priority_queue_decrease(arguments)
+#    define priority_queue_update_with(arguments...)                           \
+        CCC_priority_queue_update_with(arguments)
+#    define priority_queue_increase_with(arguments...)                         \
+        CCC_priority_queue_increase_with(arguments)
+#    define priority_queue_decrease_with(arguments...)                         \
+        CCC_priority_queue_decrease_with(arguments)
+#    define priority_queue_order(arguments...)                                 \
+        CCC_priority_queue_order(arguments)
+#    define priority_queue_clear(arguments...)                                 \
+        CCC_priority_queue_clear(arguments)
+#    define priority_queue_validate(arguments...)                              \
+        CCC_priority_queue_validate(arguments)
+/* NOLINTEND(readability-identifier-naming) */
+#endif /* PRIORITY_QUEUE_USING_NAMESPACE_CCC */
+
+#endif /* CCC_PRIORITY_QUEUE_H */

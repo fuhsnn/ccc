@@ -67,20 +67,20 @@ option(CCC_FLAT_HASH_MAP_PORTABLE "Fallback to portable implementation of flat h
 set(CCC_USER_CONFIGURATION ""  CACHE STRING "Freestanding environment with user defined configuration providing necessary functions")
 if (CCC_USER_CONFIGURATION)
     target_compile_definitions(${PROJECT_NAME} 
-        PRIVATE 
+        PUBLIC 
             CCC_USER_CONFIGURATION="${CCC_USER_CONFIGURATION}"
     )
     message(STATUS "CCC: Using environment with user provided configuration file: ${CCC_USER_CONFIGURATION}")
 endif()
 if (CCC_FLAT_HASH_MAP_PORTABLE)
     target_compile_definitions(${PROJECT_NAME} 
-        PRIVATE 
+        PUBLIC 
             CCC_FLAT_HASH_MAP_PORTABLE
     )
     message(STATUS "CCC: Using portable SRMD flat hash map fallback implementation")
 endif()
 if (CCC_BUILD_SPECIALIZED)
-    target_compile_definitions(${PROJECT_NAME} PRIVATE CCC_SPECIALIZED_ENABLED)
+    target_compile_definitions(${PROJECT_NAME} PUBLIC CCC_SPECIALIZED_ENABLED)
 endif()
 target_compile_features(${PROJECT_NAME} PUBLIC c_std_23)
 

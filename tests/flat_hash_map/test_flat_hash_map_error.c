@@ -1,7 +1,7 @@
 #include "ccc/flat_hash_map.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "flat_hash_map_utility.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 #include "utility/std_allocator.h"
 

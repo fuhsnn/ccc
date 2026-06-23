@@ -8,8 +8,8 @@
 #include "ccc/flat_bitset.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "doubly_linked_list_utility.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 check_static_begin(doubly_linked_list_test_insert_iterate) {

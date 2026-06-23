@@ -7,25 +7,15 @@ set(INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
 )
 
 # Default destinations from GNUInstallDirs are only changed for debug config.
-if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    install(TARGETS ${PROJECT_NAME}
-        EXPORT "${PROJECT_NAME}Targets"
-        FILE_SET public_headers
-        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}/debug/bin # bin
-        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/debug # lib/debug
-        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}/debug # lib/debug
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} # include/ccc
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # include
-    )
-else()
-    install(TARGETS ${PROJECT_NAME}
-        EXPORT "${PROJECT_NAME}Targets"
-        FILE_SET public_headers
-        # All destinations are default in release except header location.
-        PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} # include/ccc
-        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # include
-    )
-endif()
+install(TARGETS ${PROJECT_NAME}
+    EXPORT "${PROJECT_NAME}Targets"
+    FILE_SET public_headers
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} # bin
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} # lib
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} # lib
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME} # include/ccc
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR} # include
+)
 
 # generate and install export file
 install(EXPORT "${PROJECT_NAME}Targets"

@@ -1,8 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "ccc/types.h"
 #include "flat_hash_map_utility.h"
-#include "types.h"
 
 uint64_t
 flat_hash_map_int_zero(CCC_Key_arguments const) {

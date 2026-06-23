@@ -4,11 +4,11 @@
 #define TRAITS_USING_NAMESPACE_CCC
 #define SINGLY_LINKED_LIST_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "singly_linked_list.h"
+#include "ccc/singly_linked_list.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
 #include "singly_linked_list_utility.h"
-#include "traits.h"
-#include "types.h"
+#include "tests/checkers.h"
 
 CCC_Order
 val_order(CCC_Comparator_arguments const c) {

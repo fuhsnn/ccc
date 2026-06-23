@@ -4,11 +4,11 @@
 
 #define TRAITS_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "traits.h"
-#include "tree_map.h"
+#include "ccc/traits.h"
+#include "ccc/tree_map.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 #include "tree_map_utility.h"
-#include "types.h"
 
 CCC_Order
 id_order(CCC_Key_comparator_arguments const order) {

@@ -6,7 +6,7 @@
 #include "ccc/flat_bitset.h"
 #include "ccc/flat_double_ended_queue.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 check_static_begin(flat_double_ended_queue_test_iterate_errors) {

@@ -5,7 +5,7 @@
 
 #include "ccc/specialized/priority_queue.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 struct Val {

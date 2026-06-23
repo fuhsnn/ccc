@@ -10,7 +10,7 @@
 #include "ccc/specialized/adaptive_map.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 static inline struct Val

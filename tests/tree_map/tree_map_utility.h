@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-#include "checkers.h"
-#include "tree_map.h"
-#include "types.h"
+#include "ccc/tree_map.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 
 struct Val {
     int key;

@@ -2,8 +2,8 @@
 
 #include "ccc/flat_bitset.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "str_view/str_view.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 typedef typeof(*(CCC_Flat_bitset){}.blocks) Bitblocks;

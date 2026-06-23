@@ -4,16 +4,16 @@ add_library(${namespace}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
 # File sets simplify install and allow isolation of only container files.
 target_sources(${PROJECT_NAME}
     PRIVATE
-        ${PROJECT_SOURCE_DIR}/source/types.c
-        ${PROJECT_SOURCE_DIR}/source/flat_bitset.c
-        ${PROJECT_SOURCE_DIR}/source/flat_buffer.c
-        ${PROJECT_SOURCE_DIR}/source/flat_hash_map.c
-        ${PROJECT_SOURCE_DIR}/source/flat_double_ended_queue.c
-        ${PROJECT_SOURCE_DIR}/source/flat_priority_queue.c
-        ${PROJECT_SOURCE_DIR}/source/singly_linked_list.c
-        ${PROJECT_SOURCE_DIR}/source/doubly_linked_list.c
-        ${PROJECT_SOURCE_DIR}/source/tree_map.c
-        ${PROJECT_SOURCE_DIR}/source/array_tree_map.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/types.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/flat_bitset.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/flat_buffer.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/flat_hash_map.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/flat_double_ended_queue.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/flat_priority_queue.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/singly_linked_list.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/doubly_linked_list.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/tree_map.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/../source/array_tree_map.c
     PUBLIC 
         FILE_SET public_headers
             TYPE HEADERS
@@ -48,9 +48,9 @@ if (CCC_BUILD_SPECIALIZED)
     message(STATUS "CCC Building with specialized modules enabled.")
     target_sources(${PROJECT_NAME}
         PRIVATE
-            ${PROJECT_SOURCE_DIR}/source/specialized/adaptive_map.c
-            ${PROJECT_SOURCE_DIR}/source/specialized/array_adaptive_map.c
-            ${PROJECT_SOURCE_DIR}/source/specialized/priority_queue.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/../source/specialized/adaptive_map.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/../source/specialized/array_adaptive_map.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/../source/specialized/priority_queue.c
         PUBLIC 
             FILE_SET public_headers
                 FILES 

@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-#include "checkers.h"
-#include "singly_linked_list.h"
-#include "types.h"
+#include "ccc/singly_linked_list.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 
 struct Val {
     int id;

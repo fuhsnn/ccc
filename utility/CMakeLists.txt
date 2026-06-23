@@ -1,9 +1,3 @@
-cmake_minimum_required(VERSION 3.23)
-project("ccc utility"
-    VERSION 0.1.0
-    LANGUAGES C
-    DESCRIPTION "Utilities for testing and samples."
-)
 add_custom_target(utility)
 
 add_library(random random.h random.c)
@@ -16,15 +10,15 @@ target_link_libraries(cli PUBLIC
 add_dependencies(utility cli)
 
 add_library(std_allocator std_allocator.h std_allocator.c)
-target_link_libraries(std_allocator ccc)
+target_link_libraries(std_allocator ccc::ccc)
 add_dependencies(utility std_allocator)
 
 add_library(stack_allocator stack_allocator.h stack_allocator.c)
-target_link_libraries(stack_allocator ccc)
+target_link_libraries(stack_allocator ccc::ccc)
 add_dependencies(utility stack_allocator)
 
 add_library(string_arena string_arena.h string_arena.c)
-target_link_libraries(string_arena ccc)
+target_link_libraries(string_arena ccc::ccc)
 add_dependencies(utility string_arena)
 
 add_library(defer INTERFACE defer.h)

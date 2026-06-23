@@ -7,11 +7,11 @@
 #define FLAT_HASH_MAP_USING_NAMESPACE_CCC
 #define TRAITS_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "flat_hash_map.h"
+#include "ccc/flat_hash_map.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
 #include "flat_hash_map_utility.h"
-#include "traits.h"
-#include "types.h"
+#include "tests/checkers.h"
 #include "utility/random.h"
 #include "utility/std_allocator.h"
 

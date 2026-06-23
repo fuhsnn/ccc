@@ -5,7 +5,7 @@
 #define FLAT_BITSET_USING_NAMESPACE_CCC
 #include "ccc/flat_bitset.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 check_static_begin(flat_bitset_test_set_one) {

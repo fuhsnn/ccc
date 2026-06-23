@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-#include "checkers.h"
-#include "doubly_linked_list.h"
-#include "types.h"
+#include "ccc/doubly_linked_list.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 
 struct Val {
     CCC_Doubly_linked_list_node e;

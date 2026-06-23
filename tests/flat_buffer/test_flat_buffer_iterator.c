@@ -6,8 +6,8 @@
 
 #include "ccc/flat_buffer.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "flat_buffer_utility.h"
+#include "tests/checkers.h"
 
 check_static_begin(flat_buffer_test_iterate_empty) {
     Flat_buffer const b = flat_buffer_default(int);

@@ -13,7 +13,7 @@
 #include "ccc/flat_bitset.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/std_allocator.h"
 
 check_static_begin(array_tree_map_test_insert_erase_shuffled) {

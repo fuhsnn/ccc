@@ -12,7 +12,7 @@ The leetcode lru problem in C. */
 #include "ccc/specialized/adaptive_map.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/std_allocator.h"
 
 #define REQS 11

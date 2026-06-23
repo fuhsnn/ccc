@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "checkers.h"
-#include "tree_map.h"
+#include "ccc/tree_map.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 #include "tree_map_utility.h"
-#include "types.h"
 #include "utility/stack_allocator.h"
 
 static CCC_Tree_map

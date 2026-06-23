@@ -4,11 +4,11 @@
 #define TRAITS_USING_NAMESPACE_CCC
 #define DOUBLY_LINKED_LIST_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "doubly_linked_list.h"
+#include "ccc/doubly_linked_list.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
 #include "doubly_linked_list_utility.h"
-#include "traits.h"
-#include "types.h"
+#include "tests/checkers.h"
 
 CCC_Order
 val_order(CCC_Comparator_arguments const c) {

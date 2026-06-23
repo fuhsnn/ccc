@@ -7,11 +7,11 @@ the entry functions. */
 #define FLAT_HASH_MAP_USING_NAMESPACE_CCC
 #define TRAITS_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "flat_hash_map.h"
+#include "ccc/flat_hash_map.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
 #include "flat_hash_map_utility.h"
-#include "traits.h"
-#include "types.h"
+#include "tests/checkers.h"
 
 static CCC_Hasher const val_hasher = {
     .hash = flat_hash_map_int_to_u64,

@@ -1,7 +1,7 @@
 #ifndef CCC_STD_ALLOCATOR_H
 #define CCC_STD_ALLOCATOR_H
+#include "ccc/types.h"
 #include <stddef.h>
-#include <types.h>
 
 /** @brief A wrapper around the standard library allocator that accommodates
 user alignment requests.

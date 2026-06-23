@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-#include "array_tree_map.h"
-#include "checkers.h"
-#include "types.h"
+#include "ccc/array_tree_map.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 
 struct Val {
     int id;

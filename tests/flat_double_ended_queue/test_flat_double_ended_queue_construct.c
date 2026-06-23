@@ -9,8 +9,8 @@
 #include "ccc/flat_double_ended_queue.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "flat_double_ended_queue_utility.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 static Flat_double_ended_queue const byte_ring

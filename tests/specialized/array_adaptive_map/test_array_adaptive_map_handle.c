@@ -11,7 +11,7 @@ the handle functions. */
 #include "ccc/specialized/array_adaptive_map.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 
 static inline struct Val
 val(int const val) {

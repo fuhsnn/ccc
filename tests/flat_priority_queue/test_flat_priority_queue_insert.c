@@ -4,11 +4,11 @@
 
 #define TRAITS_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "flat_priority_queue.h"
+#include "ccc/flat_priority_queue.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
 #include "flat_priority_queue_utility.h"
-#include "traits.h"
-#include "types.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 #include "utility/std_allocator.h"
 

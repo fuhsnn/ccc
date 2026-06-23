@@ -6,8 +6,8 @@
 #include "ccc/doubly_linked_list.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "doubly_linked_list_utility.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 static CCC_Doubly_linked_list

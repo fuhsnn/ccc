@@ -10,8 +10,8 @@
 #include "ccc/flat_priority_queue.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
 #include "flat_priority_queue_utility.h"
+#include "tests/checkers.h"
 #include "utility/stack_allocator.h"
 
 check_static_begin(flat_priority_queue_test_pop_one) {

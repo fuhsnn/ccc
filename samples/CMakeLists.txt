@@ -1,10 +1,3 @@
-cmake_minimum_required(VERSION 3.15)
-project("ccc samples"
-    VERSION 0.1.0
-    LANGUAGES C
-    DESCRIPTION "Testing the C Container Collection with sample programs."
-)
-
 add_custom_target(samples)
 
 add_executable(maze maze.c)
@@ -13,7 +6,7 @@ target_link_libraries(maze
         cli
         random
         str_view::str_view
-        ccc
+        ccc::ccc
         std_allocator
         defer
 )
@@ -25,7 +18,7 @@ target_link_libraries(graph
         cli
         random
         str_view::str_view
-        ccc
+        ccc::ccc
         std_allocator
         defer
 )
@@ -36,7 +29,7 @@ target_link_libraries(words
     PRIVATE
         cli
         str_view::str_view
-        ccc
+        ccc::ccc
         std_allocator
         string_arena
         defer
@@ -48,7 +41,7 @@ target_link_libraries(ccczip
     PRIVATE
         cli
         str_view::str_view
-        ccc
+        ccc::ccc
         std_allocator
         string_arena
         defer

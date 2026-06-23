@@ -12,7 +12,7 @@
 #include "ccc/traits.h"
 #include "ccc/tree_map.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "tree_map_utility.h"
 #include "utility/stack_allocator.h"
 

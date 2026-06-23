@@ -3,7 +3,7 @@
 
 #include "ccc/flat_bitset.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 #include "utility/std_allocator.h"
 
 check_static_begin(flat_bitset_test_push_pop_back_no_reallocate) {

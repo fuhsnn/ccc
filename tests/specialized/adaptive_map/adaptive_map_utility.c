@@ -8,7 +8,7 @@
 #include "ccc/specialized/adaptive_map.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 
 CCC_Order
 id_order(CCC_Key_comparator_arguments const order) {

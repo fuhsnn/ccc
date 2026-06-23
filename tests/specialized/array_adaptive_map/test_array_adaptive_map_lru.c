@@ -12,7 +12,7 @@ The leetcode lru problem in C. */
 #include "ccc/specialized/array_adaptive_map.h"
 #include "ccc/traits.h"
 #include "ccc/types.h"
-#include "checkers.h"
+#include "tests/checkers.h"
 
 enum : size_t {
     LRU_CAP = 32,

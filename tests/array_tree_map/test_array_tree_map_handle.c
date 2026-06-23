@@ -7,11 +7,11 @@ the handle functions. */
 #define ARRAY_TREE_MAP_USING_NAMESPACE_CCC
 #define TRAITS_USING_NAMESPACE_CCC
 
-#include "array_tree_map.h"
 #include "array_tree_map_utility.h"
-#include "checkers.h"
-#include "traits.h"
-#include "types.h"
+#include "ccc/array_tree_map.h"
+#include "ccc/traits.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 
 static inline struct Val
 val(int const val) {

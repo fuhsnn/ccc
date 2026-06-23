@@ -3,9 +3,9 @@
 
 #include <stddef.h>
 
-#include "checkers.h"
-#include "flat_priority_queue.h"
-#include "types.h"
+#include "ccc/flat_priority_queue.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 
 struct Val {
     int id;

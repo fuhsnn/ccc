@@ -6,11 +6,11 @@
 #define TRAITS_USING_NAMESPACE_CCC
 #define TREE_MAP_USING_NAMESPACE_CCC
 
-#include "checkers.h"
-#include "traits.h"
-#include "tree_map.h"
+#include "ccc/traits.h"
+#include "ccc/tree_map.h"
+#include "ccc/types.h"
+#include "tests/checkers.h"
 #include "tree_map_utility.h"
-#include "types.h"
 #include "utility/stack_allocator.h"
 
 static inline struct Val

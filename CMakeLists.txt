@@ -1,9 +1,10 @@
 # This version gives us file sets which are great for library install.
 cmake_minimum_required(VERSION 3.23)
 project("ccc" 
-  VERSION 0.80.4
-  LANGUAGES C
-  DESCRIPTION "The C Container Collection (ccc). A collection of containers written in C."
+    VERSION 0.80.4
+    LANGUAGES C
+    DESCRIPTION "The C Container Collection offers allocator agnostic data structures for C programmers."
+    HOMEPAGE_URL "https://github.com/SkeletOSS/ccc"
 )
 # We will set standard on a per target basis for CCC in the ccc/CMakeLists.txt file.
 set(CMAKE_C_STANDARD 23)
@@ -77,3 +78,21 @@ include(cmake/Coverage.cmake)
 set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 #message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 include(Installing)
+
+# Now provide developers and users with as much clarity as possible in case they don't read install directions.
+
+include(FeatureSummary)
+add_feature_info(CCC_BUILD_SPECIALIZED 
+    CCC_BUILD_SPECIALIZED "Build containers with unique space and runtime properties found in the specialized/ directories."
+)
+add_feature_info(CCC_FLAT_HASH_MAP_PORTABLE
+    CCC_FLAT_HASH_MAP_PORTABLE "Compile the CCC_Flat_hash_map with Single Register Multiple Data fallback logic for compatibility with a wider range of platforms."
+)
+add_feature_info(CCC_USER_CONFIGURATION
+    CCC_USER_CONFIGURATION "Build CCC as part of a freestanding target with user-provided implementations of C standard library functions."
+)
+feature_summary(WHAT ALL
+    DESCRIPTION "C Container Collection Feature Summary (v${PROJECT_VERSION}):"
+)
+
+

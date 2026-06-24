@@ -135,11 +135,11 @@ FetchContent_MakeAvailable(ccc)
 target_compile_options(ccc PRIVATE "-w")
 
 # New step allowing CCC to find the configuration header.
-target_include_directories(ccc PRIVATE
-  ${CMAKE_SOURCE_DIR}/my_ccc_configuration
+target_include_directories(ccc PUBLIC
+  $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/my_ccc_configuration>
 )
 # New step here or in CMakePresets.json to define preprocessor directives
-target_compile_definitions(ccc PRIVATE
+target_compile_definitions(ccc PUBLIC
   CCC_USER_CONFIGURATION="my_ccc_configuration.h"
   CCC_FLAT_HASH_MAP_PORTABLE
 )

@@ -45,7 +45,6 @@ target_sources(${PROJECT_NAME}
 )
 
 if (CCC_BUILD_SPECIALIZED)
-    message(STATUS "CCC Building with specialized modules enabled.")
     target_sources(${PROJECT_NAME}
         PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/../source/specialized/adaptive_map.c

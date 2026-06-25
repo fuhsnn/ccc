@@ -35,7 +35,7 @@ and bug doubling. */
 #include <stdint.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/flat_bitset.h"
 #include "ccc/private/private_flat_bitset.h"
 #include "ccc/types.h"

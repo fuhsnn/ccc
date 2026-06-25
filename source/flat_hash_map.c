@@ -38,7 +38,7 @@ better capabilities for 128 bit group operations. */
 #include <stdint.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/flat_hash_map.h"
 #include "ccc/private/private_flat_hash_map.h"
 #include "ccc/types.h"

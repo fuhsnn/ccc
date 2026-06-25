@@ -49,7 +49,7 @@ is fine. */
 #include <stddef.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/private/private_tree_map.h"
 #include "ccc/tree_map.h"
 #include "ccc/types.h"

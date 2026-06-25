@@ -29,7 +29,7 @@ will behave as a ring buffer. This has interesting use case implications. */
 /** @endcond */
 
 #include "../flat_buffer.h"
-#include "../types.h"
+#include "../types.h" /* IWYU pragma: keep */
 
 /* NOLINTBEGIN(readability-identifier-naming) */
 

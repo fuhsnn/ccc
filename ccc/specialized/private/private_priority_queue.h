@@ -33,7 +33,7 @@ requirements.*/
 #include <stddef.h>
 /** @endcond */
 
-#include "../../types.h"
+#include "../../types.h" /* IWYU pragma: keep */
 
 /* NOLINTBEGIN(readability-identifier-naming) */
 

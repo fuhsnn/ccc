@@ -32,7 +32,7 @@ tree level. */
 /** @endcond */
 
 #include "../flat_buffer.h"
-#include "../types.h"
+#include "../types.h" /* IWYU pragma: keep */
 
 /* NOLINTBEGIN(readability-identifier-naming) */
 

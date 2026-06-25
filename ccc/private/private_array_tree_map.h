@@ -30,7 +30,7 @@ offers pointer stability and is significantly less space efficient. */
 #include <stdint.h>
 /** @endcond */
 
-#include "../types.h"
+#include "../types.h" /* IWYU pragma: keep */
 
 /* NOLINTBEGIN(readability-identifier-naming) */
 

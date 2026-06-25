@@ -20,7 +20,7 @@ if they refactor. */
 #include <stddef.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/private/private_singly_linked_list.h"
 #include "ccc/singly_linked_list.h"
 #include "ccc/sort.h"

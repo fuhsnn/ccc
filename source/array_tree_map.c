@@ -58,7 +58,7 @@ to that section, in my opinion. */
 
 /** CCC provided headers. */
 #include "ccc/array_tree_map.h"
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/private/private_array_tree_map.h"
 #include "ccc/types.h"
 

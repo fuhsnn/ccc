@@ -17,7 +17,7 @@ limitations under the License. */
 #include <stdint.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/flat_buffer.h"
 #include "ccc/flat_double_ended_queue.h"
 #include "ccc/private/private_flat_double_ended_queue.h"

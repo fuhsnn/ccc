@@ -15,7 +15,7 @@ limitations under the License. */
 #include <stddef.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/specialized/priority_queue.h"
 #include "ccc/specialized/private/private_priority_queue.h"
 #include "ccc/types.h"

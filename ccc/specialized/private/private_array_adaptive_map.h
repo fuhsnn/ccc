@@ -27,7 +27,7 @@ stability in contrast to pointer stability that the intrusive variant offers. */
 #include <stddef.h>
 /** @endcond */
 
-#include "../../types.h"
+#include "../../types.h" /* IWYU pragma: keep */
 
 /* NOLINTBEGIN(readability-identifier-naming) */
 

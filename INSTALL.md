@@ -138,17 +138,12 @@ target_compile_options(ccc PRIVATE "-w")
 target_include_directories(ccc PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/my_ccc_configuration>
 )
-# New step here or in CMakePresets.json to define preprocessor directives
-target_compile_definitions(ccc PUBLIC
-  CCC_USER_CONFIGURATION="my_ccc_configuration.h"
-  CCC_FLAT_HASH_MAP_PORTABLE
-)
 
 add_executable(freestanding freestanding.c)
 target_link_libraries(freestanding ccc::ccc)
 ```
 
-Instead of `target_compile_definitions`, the necessary definitions can be placed in the `CMakePresets.json` or `CMakeUserPresets.json` file, if the user prefers.
+Now pass the flag to CMake at configure time via `CMakePresets.json`, `CMakeUserPresets.json`, or the command line.
 
 ```json
 "cacheVariables": {
@@ -167,7 +162,9 @@ cmake --preset=my-preset\
 
 Now the C Container Collection is fully configured to be built as part of the user project in a freestanding environment.
 
-Any other headers such as `<stdint.h>`, `<stddef.h>`, etc. that are included directly in source code now, or will be in the future, are those provided by the C23 standard on freestanding targets. See the flat hash map documentation for how to select the optimal Single Instruction Multiple Data or Single Register Multiple Data implementation. Even on freestanding targets, the compiler intrinsics used on x86-64 and ARM NEON platforms should be available. However, `CCC_FLAT_HASH_MAP_PORTABLE` is an available directive for users that need to force a portable fallback implementation when such compiler platform intrinsics are not available. See `ccc/flat_hash_map.h` for more.
+Any other C headers that the collection uses internally, such as `<stdint.h>`, `<stddef.h>`, and `<stdalign.h>`, are those provided by the C23 standard on freestanding targets and do not require a user implementation.
+
+See the flat hash map documentation for how to select the optimal Single Instruction Multiple Data or Single Register Multiple Data implementation. Even on freestanding targets, the compiler intrinsics used on x86-64 and ARM NEON platforms should be available. However, `CCC_FLAT_HASH_MAP_PORTABLE` is an available directive for users that need to force a portable fallback implementation when such compiler platform intrinsics are not available. See `ccc/flat_hash_map.h` for more.
 
 ## Manual Install Quick Start
 

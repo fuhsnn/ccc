@@ -30,7 +30,7 @@ constant time queries for frequently accessed elements. */
 #include <stddef.h>
 
 /** CCC provided headers. */
-#include "ccc/configuration.h"
+#include "ccc/configuration.h" /* IWYU pragma: keep */
 #include "ccc/specialized/adaptive_map.h"
 #include "ccc/specialized/private/private_adaptive_map.h"
 #include "ccc/types.h"

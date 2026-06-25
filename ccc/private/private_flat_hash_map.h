@@ -39,7 +39,7 @@ most complexity in the implementation. */
 #include <stdint.h>
 /** @endcond */
 
-#include "../types.h"
+#include "../types.h" /* IWYU pragma: keep */
 
 /* NOLINTBEGIN(readability-identifier-naming) */
 

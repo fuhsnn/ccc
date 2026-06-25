@@ -82,6 +82,24 @@ if (CCC_BUILD_SPECIALIZED)
 endif()
 target_compile_features(${PROJECT_NAME} PUBLIC c_std_23)
 
+# Now provide developers and users with as much clarity as possible in case they don't read install directions.
+
+include(FeatureSummary)
+add_feature_info(CCC_BUILD_SPECIALIZED 
+    CCC_BUILD_SPECIALIZED "Build containers with unique space and runtime properties found in the specialized/ directories."
+)
+add_feature_info(CCC_FLAT_HASH_MAP_PORTABLE
+    CCC_FLAT_HASH_MAP_PORTABLE "Compile the CCC_Flat_hash_map with Single Register Multiple Data fallback logic for compatibility with a wider range of platforms."
+)
+add_feature_info(CCC_USER_CONFIGURATION
+    CCC_USER_CONFIGURATION "Build CCC as part of a freestanding target with user-provided implementations of C standard library functions. User provided header: '${CCC_USER_CONFIGURATION}'"
+)
+feature_summary(WHAT ALL
+    DESCRIPTION "C Container Collection Feature Summary (v${PROJECT_VERSION}):"
+)
+
+
+
 # set properties for the target. VERSION set the library version to the project
 # version * SOVERSION set the compatibility  version for the library to the
 # major number of the version

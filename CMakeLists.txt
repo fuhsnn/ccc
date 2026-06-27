@@ -10,10 +10,8 @@ project("ccc"
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 option(BUILD_SHARED_LIBS "Building ccc as a shared library is available, but OFF by default." OFF)
-
 # Required to help clarify and cleanup install in ccc/ and cmake/ cmake files.
 set(namespace "ccc")
-
 # Autodetect the specialized headers directory
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}/specialized" AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/source/specialized")
     set(CCC_HAS_SPECIALIZED_SOURCE TRUE)
@@ -28,13 +26,19 @@ if(CCC_BUILD_SPECIALIZED AND NOT CCC_HAS_SPECIALIZED_SOURCE)
 endif()
 
 ###############################################################################
-# CCC Library Target For Consumers
+################### CCC Library Target For Consumers  #########################
+# Even though we have directories for tests, samples, and utilities, these will
+# all be stripped out of releases. So we treat this project as if it's sole
+# purpose is to distribute only the core ccc::ccc target and create the library
+# target at the root with relative pathing such that the project will compile
+# on a user's system regardless of being fetched via FetchContent or 
+# find_package. This way they also get to include our headers with the ccc 
+# prefix, such as `#include "ccc/flat_buffer.h"`. Other directories will be 
+# conditionally detected.
 ###############################################################################
 
 add_library(${PROJECT_NAME})
 add_library(${namespace}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-
-# File sets simplify install and allow isolation of only container files.
 target_sources(${PROJECT_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/source/types.c
@@ -76,7 +80,6 @@ target_sources(${PROJECT_NAME}
               ccc/traits.h
               ccc/sort.h
 )
-
 if (CCC_BUILD_SPECIALIZED)
     target_sources(${PROJECT_NAME}
         PRIVATE
@@ -94,7 +97,6 @@ if (CCC_BUILD_SPECIALIZED)
                   ccc/specialized/priority_queue.h
     )
 endif()
-
 option(CCC_FLAT_HASH_MAP_PORTABLE "Fallback to portable implementation of flat hash map to improve cross platform compatibility while decreasing optimizations" OFF)
 set(CCC_USER_CONFIGURATION ""  CACHE STRING "Freestanding environment with user defined configuration providing necessary functions")
 if (CCC_USER_CONFIGURATION)
@@ -113,9 +115,7 @@ if (CCC_BUILD_SPECIALIZED)
     target_compile_definitions(${PROJECT_NAME} PUBLIC CCC_SPECIALIZED_ENABLED)
 endif()
 target_compile_features(${PROJECT_NAME} PUBLIC c_std_23)
-
 # Now provide developers and users with as much clarity as possible in case they don't read install directions.
-
 include(FeatureSummary)
 add_feature_info(CCC_BUILD_SPECIALIZED 
     CCC_BUILD_SPECIALIZED "Build containers with unique space and runtime properties found in the specialized/ directories."
@@ -129,9 +129,6 @@ add_feature_info(CCC_USER_CONFIGURATION
 feature_summary(WHAT ALL
     DESCRIPTION "C Container Collection Feature Summary (v${PROJECT_VERSION}):"
 )
-
-
-
 # set properties for the target. VERSION set the library version to the project
 # version * SOVERSION set the compatibility  version for the library to the
 # major number of the version
@@ -146,13 +143,11 @@ set_target_properties(${PROJECT_NAME}
 )
 
 include(GenerateExportHeader)
-
 # this command generates a header file in the CMAKE_CURRENT_BINARY_DIR which
 # sets the visibility attributes according to the compiler settings
 generate_export_header(${PROJECT_NAME}
     EXPORT_FILE_NAME export/export_${PROJECT_NAME}.h
 )
-
 # Add CMAKE_CURRENT_BINARY_DIR to the include path so the generated header can
 # be found
 target_include_directories(${PROJECT_NAME}
@@ -162,7 +157,11 @@ target_include_directories(${PROJECT_NAME}
 )
 
 ###############################################################################
-# CCC Auxiliary Targets For Developers 
+################## CCC Auxiliary Targets For Developers #######################
+# These targets will only be built if their directories are found. These 
+# directories are stripped out of the releases and the main.zip that GitHub 
+# creates for the repository. Therefore, they can only be obtained by cloning
+# the repository as a contributing developer.
 ###############################################################################
 
 # If we are in our own repository build environment, not a release, then we
@@ -198,19 +197,13 @@ if (CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 else()
     message(STATUS "This project has a top-level one called [${CMAKE_PROJECT_NAME}]")
 endif()
-
-
-
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/debug/bin)
 else()
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endif()
-
 include(cmake/Coverage.cmake)
-
 # where to find our CMake modules
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 #message(STATUS "CMake module path: ${CMAKE_MODULE_PATH}")
 include(Installing)
-

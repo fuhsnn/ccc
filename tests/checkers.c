@@ -1,6 +1,6 @@
 #include <stdio.h>
 
-#include "tests/checkers.h"
+#include "checkers.h"
 
 void
 check_print_fail_message(

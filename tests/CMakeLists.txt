@@ -1,10 +1,8 @@
-# Master Testing Target & Global Infrastructure
 # Custom meta-target to build all tests selectively via 'cmake --build . --target tests'
 add_custom_target(tests)
 
 # Shared test assertion verification utility
 add_library(checkers STATIC checkers.c checkers.h)
-target_link_libraries(checkers PRIVATE ccc::ccc)
 add_dependencies(tests checkers)
 
 # Main test runner driver binary
@@ -17,7 +15,6 @@ add_dependencies(tests run_tests)
 function(ccc_add_test CATEGORY TEST_NAME)
     # Define the executable using the nested folder structure
     add_executable(${TEST_NAME} "${CATEGORY}/${TEST_NAME}.c")
-    
     # Apply standard required testing link matrix + any extra optional args (${ARGN})
     target_link_libraries(${TEST_NAME}
         PRIVATE
@@ -27,13 +24,11 @@ function(ccc_add_test CATEGORY TEST_NAME)
             checkers
             ccc::ccc
     )
-
     # Isolate test binary binaries into the designated test directory
     set_target_properties(${TEST_NAME} 
         PROPERTIES 
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/tests"
     )
-    
     # Tie the executable directly to the master build target
     add_dependencies(tests ${TEST_NAME})
 endfunction()

@@ -392,6 +392,7 @@ individual test that failed with CHECK_FAIL or CHECK_ERROR. */
            first. */                                                           \
         check_random_seed = (unsigned)time(NULL); /* NOLINT */                 \
         srand(check_random_seed);                 /* NOLINT */                 \
+        check_process_result = CHECK_PASS;                                     \
         (void)(test_fn_list + 0);                                              \
         check_process_result;                                                  \
     }))
